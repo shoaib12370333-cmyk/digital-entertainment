@@ -1,0 +1,679 @@
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import { auth, signInWithEmailAndPassword, signOut } from "./firebase.js";
+import { DEFAULT_TEXT, DEFAULT_CASHOUT_FIELDS, DEFAULT_SETTINGS, TEXT_GROUPS, useText } from "./text.js";
+import { Icon, Crest, CountUp, Switch, Field, Modal, Spinner, useToast, uid, fileToDataUrl } from "./ui.jsx";
+import { useAdminChats, useAdminMarker, isAdminUser } from "./chat.js";
+import { playPing, readSoundPref, writeSoundPref } from "./notify.js";
+import AdminChat from "./AdminChat.jsx";
+
+/* =========================================================
+   Login
+   ========================================================= */
+export function LoginPage({ onLogin }) {
+  const t = useText();
+  const [user, setUser] = useState("");
+  const [pass, setPass] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!user.trim() || !pass) { setError("Enter email and password."); return; }
+    setBusy(true);
+    setError("");
+    try {
+      await signInWithEmailAndPassword(auth, user.trim(), pass);
+      if (!isAdminUser(auth.currentUser)) {
+        // A chat visitor's account must not open the admin panel.
+        await signOut(auth);
+        setError("Incorrect email or password.");
+        return;
+      }
+      onLogin();
+    } catch {
+      setError("Incorrect email or password.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="container page login-wrap">
+      <div className="card card-pad login-card">
+        <div className="crest-big"><Crest size={72} /></div>
+        <div className="eyebrow" style={{ marginTop: 18 }}>Restricted area</div>
+        <h1 className="display accent-text" style={{ fontSize: 28, margin: "8px 0 0", textTransform: "uppercase" }}>{t.loginTitle}</h1>
+        <form onSubmit={submit}>
+          <div className="input-icon">
+            <Icon name="user" size={18} />
+            <input value={user} onChange={(e) => setUser(e.target.value)} type="email" autoComplete="username" placeholder={t.loginUsernamePlaceholder} className="input" aria-label="Email" />
+          </div>
+          <div className="input-icon">
+            <Icon name="lock" size={18} />
+            <input value={pass} onChange={(e) => setPass(e.target.value)} type="password" autoComplete="current-password" placeholder={t.loginPasswordPlaceholder} className="input" aria-label="Password" />
+          </div>
+          {error ? <div className="error-box" role="alert"><Icon name="alert" size={18} /><span>{error}</span></div> : null}
+          <button disabled={busy} type="submit" className="btn btn-primary btn-lg btn-block">
+            {busy ? <><Spinner /> Signing in...</> : <><Icon name="shield" size={19} /> {t.loginBtn}</>}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================
+   Forms (shown in modals)
+   ========================================================= */
+function Dropzone({ value, onChange, square = false, label = "Click to upload an image" }) {
+  const handle = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    onChange(await fileToDataUrl(file));
+  };
+  return (
+    <label className="dropzone">
+      <input type="file" accept="image/*" onChange={handle} />
+      {value ? <img src={value} alt="Preview" className={`preview ${square ? "sq" : ""}`} /> : <span className={`preview ${square ? "sq" : ""}`}><Icon name="image" size={24} /></span>}
+      <span>
+        <b style={{ display: "block" }}>{value ? "Replace image" : label}</b>
+        <span className="hint">PNG, JPG or WebP</span>
+      </span>
+    </label>
+  );
+}
+
+function GameForm({ initial, onSave, onCancel }) {
+  const [name, setName] = useState(initial ? initial.name : "");
+  const [downloadLink, setDownloadLink] = useState(initial ? initial.downloadLink : "");
+  const [flyer, setFlyer] = useState(initial ? initial.flyer : "");
+  const [badge, setBadge] = useState(initial ? (initial.badge || "") : "");
+  const [order, setOrder] = useState(initial && initial.order != null && initial.order !== 9999 ? String(initial.order) : "");
+  const [error, setError] = useState("");
+
+  const submit = (e) => {
+    e.preventDefault();
+    if (!name.trim()) { setError("Enter a game name."); return; }
+    if (!downloadLink.trim()) { setError("Enter a download link."); return; }
+    setError("");
+    onSave({
+      id: initial ? initial.id : uid(),
+      name: name.trim(),
+      downloadLink: downloadLink.trim(),
+      flyer,
+      badge: badge.trim(),
+      order: order.trim() === "" ? 9999 : Number(order.trim()),
+      createdAt: initial ? (initial.createdAt || Date.now()) : Date.now(),
+    });
+  };
+
+  return (
+    <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <Field label="Game name" required><input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Free Fire" className="input" autoFocus /></Field>
+      <Field label="Download link" required><input value={downloadLink} onChange={(e) => setDownloadLink(e.target.value)} placeholder="https://..." className="input" /></Field>
+      <div className="form-grid">
+        <Field label="Badge (optional)"><input value={badge} onChange={(e) => setBadge(e.target.value)} placeholder="New, Popular, Hot" className="input" /></Field>
+        <Field label="Position (optional)"><input value={order} onChange={(e) => setOrder(e.target.value.replace(/[^0-9]/g, ""))} placeholder="1 = first" className="input" inputMode="numeric" /></Field>
+      </div>
+      <div className="field">
+        <span className="label">Flyer image</span>
+        <Dropzone value={flyer} onChange={setFlyer} label="Click to upload a flyer" />
+      </div>
+      {error ? <div className="error-box" role="alert"><Icon name="alert" size={18} /><span>{error}</span></div> : null}
+      <div style={{ display: "flex", gap: 10 }}>
+        <button type="submit" className="btn btn-primary" style={{ flex: 1 }}><Icon name="save" size={17} /> Save game</button>
+        <button type="button" onClick={onCancel} className="btn btn-ghost">Cancel</button>
+      </div>
+    </form>
+  );
+}
+
+function PaymentForm({ initial, onSave, onCancel }) {
+  const [name, setName] = useState(initial ? initial.name : "");
+  const [link, setLink] = useState(initial ? initial.link : "");
+  const [qr, setQr] = useState(initial ? initial.qr : "");
+  const [details, setDetails] = useState(initial ? (initial.details || "") : "");
+  const [error, setError] = useState("");
+
+  const submit = (e) => {
+    e.preventDefault();
+    if (!name.trim()) { setError("Enter a payment method name."); return; }
+    if (!link.trim() && !qr && !details.trim()) { setError("Add a link, a QR code or account details."); return; }
+    setError("");
+    onSave({ id: initial ? initial.id : uid(), name: name.trim(), link: link.trim(), qr, details: details.trim() });
+  };
+
+  return (
+    <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <Field label="Method name" required><input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Easypaisa" className="input" autoFocus /></Field>
+      <Field label="Account details" hint="Shown with a copy button, e.g. a cashtag, account number or wallet address."><input value={details} onChange={(e) => setDetails(e.target.value)} placeholder="e.g. $yourcashtag or 0300 1234567" className="input" /></Field>
+      <Field label="Payment link" hint="Optional if you add details or a QR code."><input value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://..." className="input" /></Field>
+      <div className="field">
+        <span className="label">QR code</span>
+        <Dropzone value={qr} onChange={setQr} square label="Click to upload a QR code" />
+      </div>
+      {error ? <div className="error-box" role="alert"><Icon name="alert" size={18} /><span>{error}</span></div> : null}
+      <div style={{ display: "flex", gap: 10 }}>
+        <button type="submit" className="btn btn-primary" style={{ flex: 1 }}><Icon name="save" size={17} /> Save method</button>
+        <button type="button" onClick={onCancel} className="btn btn-ghost">Cancel</button>
+      </div>
+    </form>
+  );
+}
+
+/* =========================================================
+   Cash-out admin
+   ========================================================= */
+function CashOutAdmin({ fields, onSave, cashouts, settings, setSettings, onUpdateRequest }) {
+  const toast = useToast();
+  const [sub, setSub] = useState("requests");
+  const [filter, setFilter] = useState("all");
+  const [local, setLocal] = useState((fields && fields.length ? fields : DEFAULT_CASHOUT_FIELDS).map((f) => ({ ...f })));
+  const [newName, setNewName] = useState("");
+  const [newPlaceholder, setNewPlaceholder] = useState("");
+  const [newType, setNewType] = useState("payment");
+  const [newRequired, setNewRequired] = useState(false);
+  const [template, setTemplate] = useState(settings.cashoutMessageTemplate || DEFAULT_SETTINGS.cashoutMessageTemplate);
+
+  useEffect(() => setLocal((fields && fields.length ? fields : DEFAULT_CASHOUT_FIELDS).map((f) => ({ ...f }))), [fields]);
+
+  const persist = (next, msg = "Saved") => { setLocal(next); onSave(next); toast(msg); };
+  const add = (e) => {
+    e.preventDefault();
+    if (!newName.trim()) return;
+    persist([...local, { id: uid(), name: newName.trim(), type: newType, placeholder: newPlaceholder.trim(), required: newRequired, active: true }], "Field added");
+    setNewName(""); setNewPlaceholder(""); setNewRequired(false);
+  };
+  // Typing edits local state only; it is saved when the input loses focus.
+  const edit = (id, patch) => setLocal((l) => l.map((f) => (f.id === id ? { ...f, ...patch } : f)));
+  const toggle = (id, patch) => persist(local.map((f) => (f.id === id ? { ...f, ...patch } : f)));
+  const remove = (id) => { if (window.confirm("Remove this field?")) persist(local.filter((f) => f.id !== id), "Field removed"); };
+  const saveTemplate = () => { setSettings({ ...settings, cashoutMessageTemplate: template }); toast("Message template saved"); };
+
+  const all = [...(cashouts || [])].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  const norm = (r) => (r.status || "pending").toLowerCase();
+  const counts = {
+    all: all.length,
+    pending: all.filter((r) => norm(r) === "pending").length,
+    approved: all.filter((r) => norm(r) === "approved" || norm(r) === "completed").length,
+    rejected: all.filter((r) => norm(r) === "rejected").length,
+  };
+  const shown = all.filter((r) => {
+    const s = norm(r);
+    if (filter === "all") return true;
+    if (filter === "approved") return s === "approved" || s === "completed";
+    return s === filter;
+  });
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 14, flexWrap: "wrap", alignItems: "center" }}>
+        <div className="seg">
+          <button className={sub === "requests" ? "active" : ""} onClick={() => setSub("requests")}>Requests {counts.pending ? <span className="n">{counts.pending}</span> : null}</button>
+          <button className={sub === "fields" ? "active" : ""} onClick={() => setSub("fields")}>Fields</button>
+          <button className={sub === "message" ? "active" : ""} onClick={() => setSub("message")}>Message</button>
+        </div>
+        <label style={{ display: "flex", alignItems: "center", gap: 12, fontWeight: 700 }}>
+          <span className="muted">Cash-Out page</span>
+          <Switch checked={settings.cashoutEnabled !== false} onChange={(v) => { setSettings({ ...settings, cashoutEnabled: v }); toast(v ? "Cash-Out enabled" : "Cash-Out disabled"); }} label="Enable Cash-Out page" />
+        </label>
+      </div>
+
+      {sub === "requests" ? (
+        <div className="card card-pad">
+          <div className="panel-head">
+            <div><h3>Cash-Out requests</h3><p>Review and approve incoming requests.</p></div>
+            <div className="seg">
+              {["all", "pending", "approved", "rejected"].map((k) => (
+                <button key={k} className={filter === k ? "active" : ""} onClick={() => setFilter(k)} style={{ textTransform: "capitalize" }}>{k} <span className="n">{counts[k]}</span></button>
+              ))}
+            </div>
+          </div>
+          {shown.length === 0 ? (
+            <div className="empty" style={{ padding: "36px 10px" }}><div className="ico"><Icon name="receipt" size={28} /></div>No {filter === "all" ? "" : filter + " "}cash-out requests yet.</div>
+          ) : (
+            <div className="list">
+              {shown.map((r) => {
+                const status = norm(r);
+                const pending = status === "pending";
+                const tone = status === "completed" || status === "approved" ? "ok" : status === "rejected" ? "bad" : "warn";
+                return (
+                  <div key={r.id} className={`req-card ${pending ? "pending" : ""}`}>
+                    <div className="req-top">
+                      <div>
+                        <div className="display" style={{ fontSize: 17, textTransform: "uppercase", letterSpacing: ".06em" }}>{r.game}</div>
+                        <div className="faint" style={{ fontSize: 12, marginTop: 4 }}>{new Date(r.createdAt || Date.now()).toLocaleString()}</div>
+                      </div>
+                      <div className="req-amount accent-text">${Number(r.amount || 0).toFixed(2)}</div>
+                    </div>
+                    <div className="req-meta">
+                      <div><span>Username</span><b>{r.gameUsername}</b></div>
+                      <div><span>{r.paymentMethod}</span><b>{r.paymentDetails}</b></div>
+                      <div><span>Request ID</span><b style={{ fontSize: 12.5 }}>{r.id}</b></div>
+                    </div>
+                    <div className="req-foot">
+                      <span className={`badge ${tone}`}><span className="dot" /> {status}</span>
+                      {pending ? (
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                          <button type="button" className="btn btn-ok btn-sm" onClick={() => { if (window.confirm(`Approve cash-out ${r.id} for $${Number(r.amount || 0).toFixed(2)}?`)) { onUpdateRequest({ ...r, status: "approved", approvedAt: Date.now() }); toast("Request approved"); } }}><Icon name="check" size={15} /> Approve</button>
+                          <button type="button" className="btn btn-danger btn-sm" onClick={() => { if (window.confirm(`Reject cash-out ${r.id}?`)) { onUpdateRequest({ ...r, status: "rejected", rejectedAt: Date.now() }); toast("Request rejected", "bad"); } }}><Icon name="x" size={15} /> Reject</button>
+                        </div>
+                      ) : <span className="faint" style={{ fontSize: 12 }}>No action required</span>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      ) : null}
+
+      {sub === "fields" ? (
+        <>
+          <div className="card card-pad">
+            <div className="panel-head"><div><h3>Cash-Out fields</h3><p>Active payment methods appear as choices on the user form. Changes save when you click away from a field.</p></div></div>
+            <div className="list">
+              {local.map((f) => (
+                <div key={f.id} className="req-card" style={{ gap: 12 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                    <span className={`badge ${f.type === "payment" ? "cyan" : ""}`}>{f.type === "payment" ? "Payment method" : "Extra field"}</span>
+                    <label style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10, fontSize: 13, fontWeight: 700 }}>
+                      <span className="muted">Active</span>
+                      <Switch checked={f.active !== false} onChange={(v) => toggle(f.id, { active: v })} label={`${f.name} active`} />
+                    </label>
+                    <button type="button" onClick={() => remove(f.id)} className="btn btn-danger btn-sm btn-icon" aria-label="Remove field"><Icon name="trash" size={16} /></button>
+                  </div>
+                  <div className="form-grid">
+                    <Field label="Name"><input value={f.name} onChange={(e) => edit(f.id, { name: e.target.value })} onBlur={() => persist(local)} className="input" /></Field>
+                    <Field label="Placeholder"><input value={f.placeholder || ""} onChange={(e) => edit(f.id, { placeholder: e.target.value })} onBlur={() => persist(local)} className="input" placeholder="Placeholder" /></Field>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <form onSubmit={add} className="card card-pad" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div className="panel-head" style={{ marginBottom: 0 }}><h3>Add field</h3></div>
+            <div className="form-grid">
+              <Field label="Field name"><input value={newName} onChange={(e) => setNewName(e.target.value)} className="input" placeholder="e.g. Venmo" /></Field>
+              <Field label="Placeholder / hint"><input value={newPlaceholder} onChange={(e) => setNewPlaceholder(e.target.value)} className="input" placeholder="Shown inside the input" /></Field>
+              <Field label="Type">
+                <select value={newType} onChange={(e) => setNewType(e.target.value)} className="select">
+                  <option value="payment">Payment method</option>
+                  <option value="text">Extra text field</option>
+                </select>
+              </Field>
+              <label style={{ display: "flex", alignItems: "center", gap: 12, fontWeight: 700, alignSelf: "end", minHeight: 48 }}>
+                <Switch checked={newRequired} onChange={setNewRequired} label="Required" /> Required
+              </label>
+            </div>
+            <button className="btn btn-primary" style={{ alignSelf: "flex-start" }}><Icon name="plus" size={17} /> Add field</button>
+          </form>
+        </>
+      ) : null}
+
+      {sub === "message" ? (
+        <div className="card card-pad" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div className="panel-head" style={{ marginBottom: 0 }}><div><h3>Messenger message template</h3><p>This text is pre-filled in Messenger when a customer submits a request.</p></div></div>
+          <div className="chips">
+            {["{game}", "{username}", "{amount}", "{method}", "{details}", "{requestId}"].map((v) => (
+              <button type="button" key={v} className="chip" onClick={() => setTemplate((t) => t + v)}>{v}</button>
+            ))}
+          </div>
+          <textarea value={template} onChange={(e) => setTemplate(e.target.value)} className="textarea" rows={9} />
+          <button type="button" className="btn btn-primary" style={{ alignSelf: "flex-start" }} onClick={saveTemplate}><Icon name="save" size={17} /> Save template</button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/* =========================================================
+   Site text editor (generated from TEXT_GROUPS)
+   ========================================================= */
+function SiteTextEditor({ siteText, setSiteText }) {
+  const toast = useToast();
+  const [form, setForm] = useState(siteText);
+  const dirty = JSON.stringify(form) !== JSON.stringify(siteText);
+
+  return (
+    <form
+      onSubmit={(e) => { e.preventDefault(); setSiteText(form); toast("Site text saved"); }}
+      style={{ display: "flex", flexDirection: "column", gap: 4 }}
+    >
+      {TEXT_GROUPS.map((g, gi) => (
+        <details className="acc" key={g.title} open={gi === 0}>
+          <summary>{g.title}<Icon name="down" size={18} /></summary>
+          <div className="acc-body">
+            <div className="form-grid">
+              {g.fields.map(([key, label]) => {
+                const long = String(DEFAULT_TEXT[key] || "").length > 70;
+                return (
+                  <Field key={key} label={label} className={long ? "full" : ""}>
+                    {long ? (
+                      <textarea value={form[key] ?? ""} onChange={(e) => setForm({ ...form, [key]: e.target.value })} className="textarea" rows={3} style={{ minHeight: 80 }} />
+                    ) : (
+                      <input value={form[key] ?? ""} onChange={(e) => setForm({ ...form, [key]: e.target.value })} className="input" />
+                    )}
+                  </Field>
+                );
+              })}
+            </div>
+          </div>
+        </details>
+      ))}
+      <div className="savebar" style={{ marginTop: 16 }}>
+        <span className="muted" style={{ fontSize: 13.5 }}>{dirty ? "You have unsaved changes" : "All changes saved"}</span>
+        <div style={{ display: "flex", gap: 10 }}>
+          <button type="button" onClick={() => setForm(DEFAULT_TEXT)} className="btn btn-ghost btn-sm"><Icon name="refresh" size={15} /> Reset</button>
+          <button type="submit" className="btn btn-primary btn-sm" disabled={!dirty}><Icon name="save" size={15} /> Save site text</button>
+        </div>
+      </div>
+    </form>
+  );
+}
+
+/* =========================================================
+   Settings
+   ========================================================= */
+function SettingsEditor({ settings, setSettings }) {
+  const toast = useToast();
+  const pick = (s) => ({
+    metaLink: s.metaLink || "",
+    messengerUsername: s.messengerUsername || "",
+    whatsappLink: s.whatsappLink || "",
+    discordLink: s.discordLink || "",
+    instagramLink: s.instagramLink || "",
+    paymentsEnabled: s.paymentsEnabled !== false,
+    cashoutEnabled: s.cashoutEnabled !== false,
+    cashoutMetaLink: s.cashoutMetaLink || "",
+    chatEnabled: !!s.chatEnabled,
+  });
+  const [d, setD] = useState(pick(settings));
+  const dirty = JSON.stringify(d) !== JSON.stringify(pick(settings));
+  const set = (k) => (e) => setD({ ...d, [k]: e.target.value });
+
+  const save = (e) => {
+    e.preventDefault();
+    setSettings({
+      ...settings,
+      metaLink: d.metaLink.trim() || settings.metaLink,
+      messengerUsername: d.messengerUsername.trim().replace(/^@/, ""),
+      whatsappLink: d.whatsappLink.trim(),
+      discordLink: d.discordLink.trim(),
+      instagramLink: d.instagramLink.trim(),
+      paymentsEnabled: d.paymentsEnabled,
+      cashoutEnabled: d.cashoutEnabled,
+      cashoutMetaLink: d.cashoutMetaLink.trim(),
+      chatEnabled: d.chatEnabled,
+    });
+    toast("Settings saved");
+  };
+
+  const Toggle = ({ k, title, desc }) => (
+    <label className="setting" style={{ cursor: "pointer" }}>
+      <span><b>{title}</b><small>{desc}</small></span>
+      <Switch checked={d[k]} onChange={(v) => setD({ ...d, [k]: v })} label={title} />
+    </label>
+  );
+
+  return (
+    <form onSubmit={save} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      <div className="card card-pad">
+        <div className="panel-head"><div><h3>Contact &amp; social</h3><p>Where customers reach you.</p></div></div>
+        <div className="form-grid">
+          <Field label="Meta page link" className="full"><input value={d.metaLink} onChange={set("metaLink")} placeholder="https://facebook.com/yourpage" className="input" /></Field>
+          <Field label="Messenger username" className="full" hint={'If set, "Need account?" opens Messenger with a pre-filled message naming the game. If blank, it opens your Meta page link instead.'}>
+            <input value={d.messengerUsername} onChange={set("messengerUsername")} placeholder="yourpageusername (from m.me/username)" className="input" />
+          </Field>
+          <Field label="WhatsApp link"><input value={d.whatsappLink} onChange={set("whatsappLink")} placeholder="https://wa.me/923001234567" className="input" /></Field>
+          <Field label="Discord link"><input value={d.discordLink} onChange={set("discordLink")} placeholder="https://discord.gg/yourserver" className="input" /></Field>
+          <Field label="Instagram link" className="full" hint="Leave any blank to hide that icon from the footer."><input value={d.instagramLink} onChange={set("instagramLink")} placeholder="https://instagram.com/yourpage" className="input" /></Field>
+        </div>
+      </div>
+
+      <div className="card card-pad">
+        <div className="panel-head"><div><h3>Payments</h3><p>The payment methods themselves are managed in the Payment methods tab.</p></div></div>
+        <Toggle k="paymentsEnabled" title="Show the Payments page" desc="When off, the Payments link disappears from the menu and footer and the page shows a closed notice." />
+      </div>
+
+      <div className="card card-pad">
+        <div className="panel-head"><div><h3>Live chat</h3><p>Shows a chat button to visitors. Turn it on only after the one-time Firebase setup (see the Live Chat tab).</p></div></div>
+        <Toggle k="chatEnabled" title="Enable live chat for visitors" desc="Visitors can chat as a guest or with a username and password, and you reply from the Live Chat tab." />
+      </div>
+
+      <div className="card card-pad">
+        <div className="panel-head"><div><h3>Cash-Out</h3><p>Messenger username above takes priority and opens a pre-filled message.</p></div></div>
+        <Toggle k="cashoutEnabled" title="Enable Cash-Out page" desc="Customers can submit cash-out requests." />
+        <Field label="Cash-Out Meta/Facebook fallback link" className="full"><input value={d.cashoutMetaLink} onChange={set("cashoutMetaLink")} placeholder="https://facebook.com/yourpage" className="input" /></Field>
+      </div>
+
+      <div className="savebar">
+        <span className="muted" style={{ fontSize: 13.5 }}>{dirty ? "You have unsaved changes" : "All changes saved"}</span>
+        <button type="submit" className="btn btn-primary" disabled={!dirty}><Icon name="save" size={17} /> Save settings</button>
+      </div>
+    </form>
+  );
+}
+
+/* =========================================================
+   Admin shell
+   ========================================================= */
+const TABS = [
+  { id: "games", label: "Games", icon: "gamepad" },
+  { id: "payments", label: "Payment methods", icon: "wallet" },
+  { id: "cashout", label: "Cash-Out", icon: "cash" },
+  { id: "chat", label: "Live Chat", icon: "message" },
+  { id: "analytics", label: "Analytics", icon: "chart" },
+  { id: "text", label: "Site Text", icon: "type" },
+  { id: "settings", label: "Settings", icon: "sliders" },
+];
+
+export function AdminPage({ games, saveGameItem, removeGameItem, payments, savePaymentItem, removePaymentItem, settings, setSettings, siteText, setSiteText, onLogout, stats, cashoutFields, saveCashoutFields, cashouts, onUpdateCashoutRequest }) {
+  const toast = useToast();
+  const [tab, setTab] = useState("games");
+  const [soundOn, setSoundOn] = useState(readSoundPref);
+  const soundRef = useRef(soundOn);
+  soundRef.current = soundOn;
+
+  // One live subscription for the whole dashboard so the badge and alerts work on every tab.
+  const chatState = useAdminChats((ev) => {
+    if (soundRef.current) playPing();
+    const c = ev.chat;
+    toast(ev.type === "opened" ? `${c.name} opened the chat` : `${c.name}: ${c.lastMessage}`);
+  });
+  const chatUnread = chatState.unreadTotal;
+  const marker = useAdminMarker();
+  const toggleSound = () => { const next = !soundOn; setSoundOn(next); writeSoundPref(next); };
+
+  useEffect(() => {
+    if (!chatUnread) return undefined;
+    const base = document.title;
+    document.title = `(${chatUnread}) ${base}`;
+    return () => { document.title = base; };
+  }, [chatUnread]);
+
+  const [gameModal, setGameModal] = useState(null); // null | "new" | game
+  const [payModal, setPayModal] = useState(null);
+
+  const sortedGames = useMemo(() => [...games].sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999)), [games]);
+  const totalDownloads = useMemo(() => Object.entries(stats).filter(([k]) => k.startsWith("game_")).reduce((n, [, v]) => n + (v || 0), 0), [stats]);
+  const pendingCount = (cashouts || []).filter((r) => (r.status || "pending").toLowerCase() === "pending").length;
+
+  const saveGame = async (game) => {
+    if (game.order != null && game.order !== 9999) {
+      const others = games.filter((g) => g.id !== game.id);
+      const conflicting = others
+        .filter((g) => g.order != null && g.order >= game.order && g.order !== 9999)
+        .sort((a, b) => a.order - b.order);
+      let nextSlot = game.order + 1;
+      for (const g of conflicting) {
+        if (g.order < nextSlot) {
+          await saveGameItem({ ...g, order: nextSlot });
+          nextSlot += 1;
+        } else {
+          break;
+        }
+      }
+    }
+    await saveGameItem(game);
+    setGameModal(null);
+    toast("Game saved");
+  };
+  const deleteGame = (g) => { if (window.confirm(`Delete "${g.name}"?`)) { removeGameItem(g.id); toast("Game deleted", "bad"); } };
+  const savePayment = (p) => { savePaymentItem(p); setPayModal(null); toast("Payment method saved"); };
+  const deletePayment = (p) => { if (window.confirm(`Delete "${p.name}"?`)) { removePaymentItem(p.id); toast("Payment method deleted", "bad"); } };
+
+  const maxDl = Math.max(1, ...games.map((g) => stats["game_" + g.id] || 0));
+  const current = TABS.find((x) => x.id === tab);
+
+  return (
+    <div className="container page admin" style={{ paddingTop: 28 }}>
+      <aside className="card admin-side">
+        <div className="admin-side-head">
+          <Crest size={38} />
+          <div><b>Command center</b><span>Admin panel</span></div>
+        </div>
+        {TABS.map((x) => (
+          <button key={x.id} className={`side-link ${tab === x.id ? "active" : ""}`} onClick={() => setTab(x.id)}>
+            <Icon name={x.icon} size={19} /> {x.label}
+            {x.id === "cashout" && pendingCount ? <span className="count">{pendingCount}</span> : null}
+            {x.id === "chat" && chatUnread ? <span className="count">{chatUnread}</span> : null}
+          </button>
+        ))}
+        <div className="side-foot">
+          <button className="side-link" onClick={onLogout}><Icon name="logout" size={19} /> Log out</button>
+        </div>
+      </aside>
+
+      <div className="admin-main">
+        <div className="admin-title">
+          <div>
+            <span className="eyebrow left">Command center</span>
+            <h1>{current.label}</h1>
+          </div>
+        </div>
+
+        {marker.status === "missing" ? (
+          <div className="error-box" role="alert" style={{ alignItems: "flex-start" }}>
+            <Icon name="alert" size={18} style={{ flexShrink: 0, marginTop: 2 }} />
+            <div>
+              <b>Admin marker missing: saving will not work.</b> The new security rules only treat you as admin if a document
+              exists at <code>digitalEntertainment_admins/{marker.uid}</code> in Firestore. Create it in the Firebase console
+              (collection <code>digitalEntertainment_admins</code>, Document ID = your UID, any field such as <code>enabled = true</code>). See the README.
+              <div style={{ marginTop: 10 }}>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => { navigator.clipboard.writeText(marker.uid); toast("UID copied"); }}>
+                  <Icon name="copy" size={15} /> Copy my UID
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        <div className="kpis">
+          <div className="card kpi"><div className="ico"><Icon name="users" size={20} /></div><b className="accent-text"><CountUp value={stats.site_visits || 0} /></b><span>Site visits</span></div>
+          <div className="card kpi"><div className="ico"><Icon name="download" size={20} /></div><b className="accent-text"><CountUp value={totalDownloads} /></b><span>Downloads</span></div>
+          <div className="card kpi"><div className="ico"><Icon name="gamepad" size={20} /></div><b className="accent-text"><CountUp value={games.length} /></b><span>Games</span></div>
+          <div className="card kpi red"><div className="ico"><Icon name="clock" size={20} /></div><b className="violet-text"><CountUp value={pendingCount} /></b><span>Pending cash-outs</span></div>
+        </div>
+
+        {tab === "games" && (
+          <div className="card card-pad">
+            <div className="panel-head">
+              <div><h3>Games</h3><p>Manage the lineup shown on the home page.</p></div>
+              <button onClick={() => setGameModal("new")} className="btn btn-primary btn-sm"><Icon name="plus" size={16} /> Add game</button>
+            </div>
+            {sortedGames.length === 0 ? (
+              <div className="empty" style={{ padding: "30px 10px" }}><div className="ico"><Icon name="gamepad" size={28} /></div>No games yet.</div>
+            ) : (
+              <div className="list">
+                {sortedGames.map((g) => (
+                  <div key={g.id} className="row">
+                    <div className="pos">{g.order != null && g.order !== 9999 ? `#${g.order}` : "–"}</div>
+                    {g.flyer ? <img src={g.flyer} alt={g.name} className="thumb" /> : <div className="thumb" />}
+                    <div className="grow"><b>{g.name}</b><small>{g.downloadLink}</small></div>
+                    {g.badge ? <span className="badge cyan">{g.badge}</span> : null}
+                    <div className="row-actions">
+                      <button onClick={() => setGameModal(g)} className="btn btn-ghost btn-sm"><Icon name="edit" size={15} /> Edit</button>
+                      <button onClick={() => deleteGame(g)} className="btn btn-danger btn-sm"><Icon name="trash" size={15} /> Delete</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {tab === "payments" && (
+          <div className="card card-pad">
+            <div className="panel-head">
+              <div><h3>Payment methods</h3><p>Payment options with account details, a link or a QR code.</p></div>
+              <div style={{ display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap" }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 12, fontWeight: 700 }}>
+                  <span className="muted">Payments page</span>
+                  <Switch checked={settings.paymentsEnabled !== false} onChange={(v) => { setSettings({ ...settings, paymentsEnabled: v }); toast(v ? "Payments page is visible" : "Payments page is hidden"); }} label="Show the Payments page" />
+                </label>
+                <button onClick={() => setPayModal("new")} className="btn btn-primary btn-sm"><Icon name="plus" size={16} /> Add method</button>
+              </div>
+            </div>
+            {payments.length === 0 ? (
+              <div className="empty" style={{ padding: "30px 10px" }}><div className="ico"><Icon name="wallet" size={28} /></div>No payment methods yet.</div>
+            ) : (
+              <div className="list">
+                {payments.map((p) => (
+                  <div key={p.id} className="row">
+                    {p.qr ? <img src={p.qr} alt={p.name} className="thumb sq" /> : <div className="thumb sq" style={{ background: "var(--bg-2)" }} />}
+                    <div className="grow"><b>{p.name}</b><small>{p.details || p.link}</small></div>
+                    <div className="row-actions">
+                      <button onClick={() => setPayModal(p)} className="btn btn-ghost btn-sm"><Icon name="edit" size={15} /> Edit</button>
+                      <button onClick={() => deletePayment(p)} className="btn btn-danger btn-sm"><Icon name="trash" size={15} /> Delete</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {tab === "cashout" && <CashOutAdmin fields={cashoutFields} onSave={saveCashoutFields} cashouts={cashouts} settings={settings} setSettings={setSettings} onUpdateRequest={onUpdateCashoutRequest} />}
+
+        {tab === "analytics" && (
+          <div className="card card-pad">
+            <div className="panel-head"><div><h3>Downloads per game</h3><p>Click-throughs on the "Download now" button.</p></div></div>
+            {games.length === 0 ? (
+              <div className="empty" style={{ padding: "30px 10px" }}>No games added yet.</div>
+            ) : (
+              <div className="bars">
+                {[...games].sort((a, b) => (stats["game_" + b.id] || 0) - (stats["game_" + a.id] || 0)).map((g) => {
+                  const n = stats["game_" + g.id] || 0;
+                  return (
+                    <div className="bar-row" key={g.id}>
+                      <span style={{ fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.name}</span>
+                      <div className="bar-track"><div className="bar-fill" style={{ width: `${(n / maxDl) * 100}%` }} /></div>
+                      <b>{n}</b>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {tab === "chat" && <AdminChat chats={chatState.chats} loading={chatState.loading} error={chatState.error} soundEnabled={soundOn} onToggleSound={toggleSound} />}
+
+        {tab === "text" && <SiteTextEditor siteText={siteText} setSiteText={setSiteText} />}
+        {tab === "settings" && <SettingsEditor settings={settings} setSettings={setSettings} />}
+      </div>
+
+      {gameModal ? (
+        <Modal title={gameModal === "new" ? "Add game" : "Edit game"} onClose={() => setGameModal(null)}>
+          <GameForm initial={gameModal === "new" ? null : gameModal} onSave={saveGame} onCancel={() => setGameModal(null)} />
+        </Modal>
+      ) : null}
+      {payModal ? (
+        <Modal title={payModal === "new" ? "Add payment method" : "Edit payment method"} onClose={() => setPayModal(null)}>
+          <PaymentForm initial={payModal === "new" ? null : payModal} onSave={savePayment} onCancel={() => setPayModal(null)} />
+        </Modal>
+      ) : null}
+    </div>
+  );
+}

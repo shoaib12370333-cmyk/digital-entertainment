@@ -1,0 +1,251 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ADMIN CHECK
+    // Chat visitors (guests and username/password accounts) are also signed in to Firebase,
+    // so "signed in" can not mean "admin". An admin is a signed-in user that has a
+    // document at digitalEntertainment_admins/{their-uid}. Create that document once, by hand, in the
+    // Firebase console (see README, "Live chat setup"). Clients can never write to it.
+    function isSignedIn() { return request.auth != null; }
+    function isAdmin() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/digitalEntertainment_admins/$(request.auth.uid));
+    }
+
+    match /digitalEntertainment_admins/{uid} {
+      allow get: if isSignedIn() && request.auth.uid == uid;
+      allow list, write: if false;
+    }
+
+    match /digitalEntertainment_games/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /digitalEntertainment_payments/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Visit and download counters. Anyone may add one to a counter; nothing else.
+    match /digitalEntertainment_stats/{id} {
+      allow read: if isAdmin();
+      allow create: if request.resource.data.keys().hasOnly(['count'])
+        && request.resource.data.count == 1;
+      allow update: if isAdmin()
+        || (request.resource.data.keys().hasOnly(['count'])
+            && request.resource.data.count == resource.data.count + 1);
+      allow delete: if isAdmin();
+    }
+
+    match /digitalEntertainment_cashouts/{id} {
+      allow read: if isAdmin();
+      allow create: if request.resource.data.status == 'pending'
+        && request.resource.data.amount is number
+        && request.resource.data.amount > 0
+        && request.resource.data.game is string
+        && request.resource.data.gameUsername is string
+        && request.resource.data.paymentMethod is string
+        && request.resource.data.paymentDetails is string;
+      allow update, delete: if isAdmin();
+    }
+
+    // Settings, site text and cash-out fields (one document each).
+    match /digitalEntertainment/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // LIVE CHAT
+    // One conversation per visitor. The document id is the visitor's own auth uid, so a
+    // visitor can only ever touch their own conversation. The admin can read and write all.
+    // The owner checks come first so ordinary visitors never pay for the admin lookup.
+    match /digitalEntertainment_chats/{chatId} {
+      function chatPath(id) { return /databases/$(database)/documents/digitalEntertainment_chats/$(id); }
+      function isOwner() { return isSignedIn() && request.auth.uid == chatId; }
+
+      // A timestamp field may only ever hold the server time of this write (or be absent on create),
+      // so a visitor cannot fake "online", pin their chat to the top, or delete the field to hide it.
+      function stampedOnCreate(k) { return !(k in request.resource.data) || request.resource.data[k] == request.time; }
+      function stampedOnUpdate(k) {
+        return !(k in request.resource.data.diff(resource.data).affectedKeys())
+          || request.resource.data[k] == request.time;
+      }
+
+      allow read: if isOwner() || isAdmin();
+
+      allow create: if isOwner()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['uid', 'name', 'isGuest', 'lastMessage', 'lastMessageAt',
+             'lastActivityAt', 'lastOpenedAt', 'lastSeenAt', 'lastSender', 'unreadAdmin', 'unreadUser'])
+        && request.resource.data.keys().hasAll(['uid', 'lastActivityAt'])
+        && request.resource.data.lastActivityAt == request.time
+        && stampedOnCreate('lastMessageAt')
+        && stampedOnCreate('lastOpenedAt')
+        && stampedOnCreate('lastSeenAt')
+        && request.resource.data.get('name', 'Guest') is string
+        && request.resource.data.get('name', 'Guest').size() <= 40
+        && request.resource.data.get('isGuest', true) is bool
+        && request.resource.data.get('lastSender', 'user') == 'user'
+        && request.resource.data.get('lastMessage', '') is string
+        && request.resource.data.get('lastMessage', '').size() <= 120
+        && request.resource.data.get('unreadAdmin', 0) in [0, 1]
+        && request.resource.data.get('unreadUser', 0) == 0;
+
+      allow update: if (isOwner()
+          && request.resource.data.uid == resource.data.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'isGuest', 'lastMessage',
+               'lastMessageAt', 'lastActivityAt', 'lastOpenedAt', 'lastSeenAt', 'lastSender', 'unreadAdmin', 'unreadUser'])
+          && stampedOnUpdate('lastMessageAt')
+          && stampedOnUpdate('lastActivityAt')
+          && stampedOnUpdate('lastOpenedAt')
+          && stampedOnUpdate('lastSeenAt')
+          && request.resource.data.get('name', 'Guest') is string
+          && request.resource.data.get('name', 'Guest').size() <= 40
+          && request.resource.data.get('isGuest', true) is bool
+          && request.resource.data.get('lastMessage', '') is string
+          && request.resource.data.get('lastMessage', '').size() <= 120
+          // A new preview must come with a new message time; the sender can only be the visitor.
+          && (!('lastMessage' in request.resource.data.diff(resource.data).affectedKeys())
+              || request.resource.data.lastMessageAt == request.time)
+          && (!('lastSender' in request.resource.data.diff(resource.data).affectedKeys())
+              || request.resource.data.lastSender == 'user')
+          // The visitor can only add one unread message at a time, and only clear their own unread count.
+          && (!('unreadAdmin' in request.resource.data.diff(resource.data).affectedKeys())
+              || (request.resource.data.unreadAdmin is int
+                  && request.resource.data.unreadAdmin == resource.data.get('unreadAdmin', 0) + 1))
+          && (!('unreadUser' in request.resource.data.diff(resource.data).affectedKeys())
+              || request.resource.data.unreadUser == 0))
+        || isAdmin();
+
+      allow delete: if isAdmin();
+
+      match /messages/{messageId} {
+        // An attachment message carries EITHER a small inline thumbnail plus the id of its full-size picture
+        // document (images/) OR a file name, size and type plus the id of its file document (files/). The
+        // attachment document must be written in the same batch and has the same id as the message.
+        function noFileFields() {
+          return !('fileId' in request.resource.data) && !('fileName' in request.resource.data)
+            && !('fileSize' in request.resource.data) && !('fileMime' in request.resource.data);
+        }
+        function hasNoAttachment() {
+          return noFileFields() && !('imageId' in request.resource.data) && !('thumb' in request.resource.data);
+        }
+        function hasValidImage() {
+          return noFileFields()
+            && request.resource.data.keys().hasAll(['imageId', 'thumb'])
+            && request.resource.data.imageId is string
+            && request.resource.data.imageId == messageId
+            && request.resource.data.imageId.matches('[A-Za-z0-9]{8,40}')
+            && request.resource.data.thumb is string
+            && request.resource.data.thumb.size() <= 60000
+            && request.resource.data.thumb.matches('data:image/jpeg;base64,.*')
+            && existsAfter(/databases/$(database)/documents/digitalEntertainment_chats/$(chatId)/images/$(request.resource.data.imageId));
+        }
+        function hasValidFile() {
+          return !('imageId' in request.resource.data) && !('thumb' in request.resource.data)
+            && request.resource.data.keys().hasAll(['fileId', 'fileName', 'fileSize', 'fileMime'])
+            && request.resource.data.fileId is string
+            && request.resource.data.fileId == messageId
+            && request.resource.data.fileId.matches('[A-Za-z0-9]{8,40}')
+            && request.resource.data.fileName is string
+            && request.resource.data.fileName.size() > 0
+            && request.resource.data.fileName.size() <= 100
+            && request.resource.data.fileSize is int
+            && request.resource.data.fileSize > 0
+            && request.resource.data.fileSize <= 512000
+            && request.resource.data.fileMime in ['application/pdf', 'text/plain', 'text/csv',
+                 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']
+            && existsAfter(/databases/$(database)/documents/digitalEntertainment_chats/$(chatId)/files/$(request.resource.data.fileId));
+        }
+        function hasValidAttachmentOrText() {
+          return (hasNoAttachment() && request.resource.data.text.size() > 0) || hasValidImage() || hasValidFile();
+        }
+
+        allow read: if isOwner() || isAdmin();
+
+        // Visitors can only add messages to their own conversation, as themselves, and only in the
+        // same batch that updates the conversation (so there are no orphan messages and every
+        // message shows up in the admin inbox).
+        allow create: if isOwner()
+          && request.resource.data.keys().hasOnly(['uid', 'sender', 'text', 'createdAt', 'imageId', 'thumb',
+               'fileId', 'fileName', 'fileSize', 'fileMime'])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.sender == 'user'
+          && request.resource.data.text is string
+          && request.resource.data.text.size() <= 1000
+          && hasValidAttachmentOrText()
+          && request.resource.data.createdAt == request.time
+          && getAfter(chatPath(chatId)).data.lastMessageAt == request.time
+          && getAfter(chatPath(chatId)).data.lastSender == 'user';
+
+        // Only the admin can write as "admin".
+        allow create: if isAdmin()
+          && request.resource.data.keys().hasOnly(['uid', 'sender', 'text', 'createdAt', 'imageId', 'thumb',
+               'fileId', 'fileName', 'fileSize', 'fileMime'])
+          && request.resource.data.sender == 'admin'
+          && request.resource.data.text is string
+          && request.resource.data.text.size() <= 1000
+          && hasValidAttachmentOrText()
+          && request.resource.data.createdAt == request.time;
+
+        // Messages are immutable; only the admin can delete (used when clearing a conversation).
+        allow update: if false;
+        allow delete: if isAdmin();
+      }
+
+      // Full-size pictures (JPEG data URLs, re-encoded by the browser). Only downloaded when opened.
+      match /images/{imageId} {
+        allow read: if isOwner() || isAdmin();
+
+        // The picture document id equals its message id, and both are written in the same batch as the
+        // conversation update, so every picture belongs to exactly one visible message (no orphans).
+        allow create: if (isOwner() || isAdmin())
+          && request.resource.data.keys().hasOnly(['uid', 'data', 'createdAt'])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.data is string
+          && request.resource.data.data.size() <= 700000
+          && request.resource.data.data.matches('data:image/jpeg;base64,.*')
+          && request.resource.data.createdAt == request.time
+          && getAfter(chatPath(chatId)).data.lastActivityAt == request.time
+          && existsAfter(/databases/$(database)/documents/digitalEntertainment_chats/$(chatId)/messages/$(imageId))
+          && getAfter(/databases/$(database)/documents/digitalEntertainment_chats/$(chatId)/messages/$(imageId)).data.imageId == imageId
+          && getAfter(/databases/$(database)/documents/digitalEntertainment_chats/$(chatId)/messages/$(imageId)).data.uid == request.auth.uid;
+
+        allow update: if false;
+        allow delete: if isAdmin();
+      }
+
+      // Files (PDF, Word .docx, Excel .xlsx, CSV, plain text) as base64 data URLs, at most ~500 KB each.
+      // The page only ever offers them as a download. Same rules as pictures: one document per file message.
+      match /files/{fileId} {
+        allow read: if isOwner() || isAdmin();
+
+        allow create: if (isOwner() || isAdmin())
+          && request.resource.data.keys().hasOnly(['uid', 'data', 'name', 'mime', 'size', 'createdAt'])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.name is string
+          && request.resource.data.name.size() > 0
+          && request.resource.data.name.size() <= 100
+          && request.resource.data.size is int
+          && request.resource.data.size > 0
+          && request.resource.data.size <= 512000
+          && request.resource.data.mime in ['application/pdf', 'text/plain', 'text/csv',
+               'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+               'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']
+          && request.resource.data.data is string
+          && request.resource.data.data.size() <= 700000
+          && request.resource.data.data.matches('data:(application/pdf|text/plain|text/csv|application/vnd\\.openxmlformats-officedocument\\.(wordprocessingml\\.document|spreadsheetml\\.sheet));base64,.*')
+          && request.resource.data.createdAt == request.time
+          && getAfter(chatPath(chatId)).data.lastActivityAt == request.time
+          && existsAfter(/databases/$(database)/documents/digitalEntertainment_chats/$(chatId)/messages/$(fileId))
+          && getAfter(/databases/$(database)/documents/digitalEntertainment_chats/$(chatId)/messages/$(fileId)).data.fileId == fileId
+          && getAfter(/databases/$(database)/documents/digitalEntertainment_chats/$(chatId)/messages/$(fileId)).data.uid == request.auth.uid;
+
+        allow update: if false;
+        allow delete: if isAdmin();
+      }
+    }
+  }
+}

@@ -25,9 +25,35 @@ Use a **new** Firebase project for this site. Do not reuse the project of anothe
 7. **Publish the rules.** Firestore Database > Rules > paste the contents of `firestore.rules` > Publish. Do steps 6 and 7 together: with the rules published but no marker, saving in the admin panel is denied (the admin panel shows a red banner with your UID when this happens).
 8. **Log in** at `/admin` with the email and password from step 5.
 
-## Deploying (Vercel)
+## Deploying (Render)
 
-Import the repository, then add the six `VITE_FIREBASE_*` variables from `.env.example` under Project Settings > Environment Variables and deploy. Redeploy after changing a variable. Add your production domain under Firebase > Authentication > Settings > Authorized domains.
+The site is a static build (`dist/`), so it runs on a Render **Static Site**. There is no server to run.
+
+**Option A: Blueprint (uses `render.yaml`)**
+
+1. Push this repository to GitHub. If it is private, allow Render to read it when you connect GitHub.
+2. Render dashboard > New > Blueprint > pick the repository.
+3. Render asks for the six `VITE_FIREBASE_*` values once. Paste them from your Firebase web app config (same values as in `.env`).
+4. Apply. Render builds with `npm ci && npm run build` and publishes `dist`.
+
+**Option B: by hand**
+
+Render dashboard > New > Static Site > pick the repository, then:
+
+| Setting | Value |
+| --- | --- |
+| Build Command | `npm ci && npm run build` |
+| Publish Directory | `dist` |
+| Environment | the six `VITE_FIREBASE_*` variables from `.env.example`, plus `NODE_VERSION` = `20` |
+| Redirects/Rewrites | Source `/*`, Destination `/index.html`, Action **Rewrite** |
+
+The rewrite rule is required: without it, opening `/payments`, `/cashout` or `/admin` directly (or refreshing on them) gives a 404.
+
+**After the first deploy**
+
+- The `VITE_*` values are baked in at build time. If you change one, trigger a new deploy (Manual Deploy > Clear build cache & deploy).
+- In Firebase > Authentication > Settings > Authorized domains, add your `*.onrender.com` address (and your own domain once you connect it). If you restrict the web API key by HTTP referrer in Google Cloud, allow the same addresses there.
+- Free Render static sites are not put to sleep, so there is no cold start.
 
 ## Payments page
 

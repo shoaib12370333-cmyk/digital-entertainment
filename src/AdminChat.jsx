@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from "react";
 import "./admin-chat.css";
 import { auth, onAuthStateChanged } from "./firebase.js";
-import { Icon, Spinner, Switch, useToast } from "./ui.jsx";
+import { Icon, Spinner, Switch, Modal, useToast } from "./ui.jsx";
 import {
   useChatMessages,
   sendAdminMessage,
@@ -18,12 +18,43 @@ import { ChatImage, ChatFile, AttachButton, DraftPreview, handlePasteAttachment,
 /* =========================================================
    Constants + small helpers
    ========================================================= */
-const QUICK_REPLIES = [
+export const DEFAULT_QUICK_REPLIES = [
   "Hi! How can I help you?",
   "Please share your game username.",
   "One moment, checking this for you.",
   "Thanks! Your request is done.",
 ];
+const MAX_REPLIES = 12;
+
+/* Edit the saved replies: one box per reply, add, remove, save. Clicking a reply in a conversation only puts it in the message box. */
+function QuickReplyEditor({ replies, onSave, onClose }) {
+  const [list, setList] = useState(replies.length ? replies : [""]);
+  const change = (i, v) => setList((l) => l.map((x, k) => (k === i ? v : x)));
+  const save = (e) => {
+    e.preventDefault();
+    onSave(list.map((x) => x.trim()).filter(Boolean).slice(0, MAX_REPLIES));
+  };
+  return (
+    <Modal title="Saved replies" onClose={onClose}>
+      <form onSubmit={save} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <p className="muted" style={{ margin: 0, fontSize: 13.5 }}>Click a saved reply in a chat and it goes into the message box, so you can change it before sending.</p>
+        {list.map((r, i) => (
+          <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+            <textarea className="textarea" rows={2} value={r} maxLength={MAX_MESSAGE_LENGTH} onChange={(e) => change(i, e.target.value)} placeholder="Type a reply..." style={{ flex: 1, minHeight: 56 }} />
+            <button type="button" className="btn btn-danger btn-sm btn-icon" aria-label="Remove reply" onClick={() => setList((l) => l.filter((_, k) => k !== i))}><Icon name="trash" size={15} /></button>
+          </div>
+        ))}
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          {list.length < MAX_REPLIES ? <button type="button" className="btn btn-ghost btn-sm" onClick={() => setList((l) => [...l, ""])}><Icon name="plus" size={15} /> Add reply</button> : null}
+          <span style={{ flex: 1 }} />
+          <button type="button" className="btn btn-ghost btn-sm" onClick={onClose}>Cancel</button>
+          <button type="submit" className="btn btn-primary btn-sm"><Icon name="save" size={15} /> Save replies</button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
 const FILTERS = [
   ["all", "All"],
   ["unread", "Unread"],
@@ -364,7 +395,7 @@ function ChatRow({ chat, active, now, onSelect }) {
 /* =========================================================
    One open conversation (mounted per chat id, so the message hook starts fresh)
    ========================================================= */
-function Conversation({ chat, now, drafts, onBack, onDeleted }) {
+function Conversation({ chat, now, drafts, onBack, onDeleted, replies, onEditReplies }) {
   const toast = useToast();
   const { messages, loading, error } = useChatMessages(chat.id);
   const online = isOnline(chat, now);
@@ -760,11 +791,12 @@ function Conversation({ chat, now, drafts, onBack, onDeleted }) {
 
       <div className="ac-composer">
         <div className="ac-quick" role="group" aria-label="Quick replies">
-          {QUICK_REPLIES.map((q) => (
+          {replies.map((q) => (
             <button type="button" key={q} className="chip ac-chip" onClick={() => insertQuick(q)} disabled={deleting} title={q}>
               <span>{q}</span>
             </button>
           ))}
+          <button type="button" className="chip ac-chip ac-chip-edit" onClick={onEditReplies} title="Add or edit saved replies"><Icon name="edit" size={13} /> <span>Edit replies</span></button>
         </div>
         {sendError ? (
           <div className="error-box ac-send-error" role="alert">
@@ -820,7 +852,8 @@ function Conversation({ chat, now, drafts, onBack, onDeleted }) {
 /* =========================================================
    Admin "Live Chat" tab
    ========================================================= */
-export default function AdminChat({ chats = [], loading = false, error = null, soundEnabled = false, onToggleSound }) {
+export default function AdminChat({ chats = [], loading = false, error = null, soundEnabled = false, onToggleSound, replies = DEFAULT_QUICK_REPLIES, onSaveReplies }) {
+  const [editingReplies, setEditingReplies] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("all");
@@ -976,6 +1009,8 @@ export default function AdminChat({ chats = [], loading = false, error = null, s
             drafts={drafts}
             onBack={() => closeConversation(selected.id)}
             onDeleted={closeConversation}
+            replies={replies}
+            onEditReplies={() => setEditingReplies(true)}
           />
         ) : (
           <div className="ac-convo ac-placeholder">
@@ -987,6 +1022,7 @@ export default function AdminChat({ chats = [], loading = false, error = null, s
           </div>
         )}
       </div>
+      {editingReplies ? <QuickReplyEditor replies={replies} onClose={() => setEditingReplies(false)} onSave={(list) => { onSaveReplies(list); setEditingReplies(false); }} /> : null}
     </section>
   );
 }

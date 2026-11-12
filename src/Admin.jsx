@@ -4,7 +4,7 @@ import { DEFAULT_TEXT, DEFAULT_CASHOUT_FIELDS, DEFAULT_SETTINGS, TEXT_GROUPS, us
 import { Icon, Crest, CountUp, Switch, Field, Modal, Spinner, useToast, uid, fileToDataUrl, fileToSquareDataUrl } from "./ui.jsx";
 import { useAdminChats, useAdminMarker, isAdminUser } from "./chat.js";
 import { playPing, readSoundPref, writeSoundPref } from "./notify.js";
-import AdminChat from "./AdminChat.jsx";
+import AdminChat, { DEFAULT_QUICK_REPLIES } from "./AdminChat.jsx";
 
 /* =========================================================
    Login
@@ -696,7 +696,7 @@ export function AdminPage({ games, saveGameItem, removeGameItem, payments, saveP
           </div>
         )}
 
-        {tab === "chat" && <AdminChat chats={chatState.chats} loading={chatState.loading} error={chatState.error} soundEnabled={soundOn} onToggleSound={toggleSound} />}
+        {tab === "chat" && <AdminChat chats={chatState.chats} loading={chatState.loading} error={chatState.error} soundEnabled={soundOn} onToggleSound={toggleSound} replies={Array.isArray(settings.quickReplies) ? settings.quickReplies : DEFAULT_QUICK_REPLIES} onSaveReplies={(list) => { setSettings({ ...settings, quickReplies: list }); toast("Saved replies updated"); }} />}
 
         {tab === "text" && <SiteTextEditor siteText={siteText} setSiteText={setSiteText} />}
         {tab === "settings" && <SettingsEditor settings={settings} setSettings={setSettings} />}

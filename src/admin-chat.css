@@ -315,3 +315,5 @@
 @media (prefers-reduced-motion: reduce) {
   .ac-root .ac-msg, .ac-root .ac-newpill, .ac-root .ac-pdot, .ac-root .ac-drop { animation: none; }
 }
+
+.ac-root .ac-chip-edit { display: inline-flex; align-items: center; gap: 6px; color: var(--accent-1); border-style: dashed; }

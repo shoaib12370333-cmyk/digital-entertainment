@@ -30,7 +30,7 @@ function Ambient() {
 }
 
 /* ---------- Nav ---------- */
-function TopBar({ metaLink, paymentsEnabled }) {
+function TopBar({ paymentsEnabled }) {
   const t = useText();
   const [scrolled, setScrolled] = useState(false);
 
@@ -54,7 +54,6 @@ function TopBar({ metaLink, paymentsEnabled }) {
     };
   }, []);
 
-  const support = metaLink || "https://facebook.com/";
 
   return (
     <>
@@ -68,7 +67,6 @@ function TopBar({ metaLink, paymentsEnabled }) {
           <nav className="nav-links" aria-label="Main">
             <NavLink to="/" end className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}><Icon name="gamepad" size={17} /> {t.navGames}</NavLink>
             {paymentsEnabled ? <NavLink to="/payments" className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}><Icon name="wallet" size={17} /> {t.navPayments}</NavLink> : null}
-            <a href={support} target="_blank" rel="noopener noreferrer" className="nav-link support-link"><Icon name="message" size={17} /> {t.navContact}</a>
             <Link to="/cashout" className="btn btn-primary btn-sm nav-cta"><Icon name="cash" size={16} /> {t.navCashout}</Link>
           </nav>
         </div>
@@ -77,14 +75,13 @@ function TopBar({ metaLink, paymentsEnabled }) {
   );
 }
 
-function Dock({ metaLink, paymentsEnabled }) {
+function Dock({ paymentsEnabled }) {
   const t = useText();
   return (
     <nav className="dock" aria-label="Quick navigation">
       <NavLink to="/" end className={({ isActive }) => (isActive ? "active" : "")}><Icon name="gamepad" size={22} />Games</NavLink>
       {paymentsEnabled ? <NavLink to="/payments" className={({ isActive }) => (isActive ? "active" : "")}><Icon name="wallet" size={22} />Pay</NavLink> : null}
       <NavLink to="/cashout" className={({ isActive }) => `primary ${isActive ? "active" : ""}`}><Icon name="cash" size={24} />Cash</NavLink>
-      <a href={metaLink || "https://facebook.com/"} target="_blank" rel="noopener noreferrer"><Icon name="message" size={22} />Support</a>
     </nav>
   );
 }
@@ -93,12 +90,14 @@ function Dock({ metaLink, paymentsEnabled }) {
 function Footer({ settings }) {
   const t = useText();
   const { whatsappLink, discordLink, instagramLink, metaLink, messengerUsername } = settings;
-  const support = messengerUsername ? `https://m.me/${messengerUsername}` : metaLink;
+  // The Meta page link still holds the placeholder until the admin sets a real one: do not show a button for it.
+  const facebookLink = metaLink && !/^https?:\/\/(www\.)?facebook\.com\/?$/i.test(metaLink.trim()) ? metaLink : "";
   const socials = [
+    facebookLink ? { href: facebookLink, label: "Facebook", icon: "facebook" } : null,
+    messengerUsername ? { href: `https://m.me/${messengerUsername}`, label: "Messenger", icon: "message" } : null,
     whatsappLink ? { href: whatsappLink, label: "WhatsApp", icon: "whatsapp" } : null,
     discordLink ? { href: discordLink, label: "Discord", icon: "users" } : null,
     instagramLink ? { href: instagramLink, label: "Instagram", icon: "instagram" } : null,
-    support ? { href: support, label: "Messenger", icon: "message" } : null,
   ].filter(Boolean);
 
   return (
@@ -125,8 +124,9 @@ function Footer({ settings }) {
             <h4>{t.footerConnectText}</h4>
             <div className="socials">
               {socials.map((s) => (
-                <a key={s.label} href={s.href} target="_blank" rel="noopener noreferrer" className="social" title={s.label} aria-label={s.label}>
-                  <Icon name={s.icon} size={20} />
+                <a key={s.label} href={s.href} target="_blank" rel="noopener noreferrer" className="social" aria-label={s.label}>
+                  <Icon name={s.icon} size={18} />
+                  <span>{s.label}</span>
                 </a>
               ))}
             </div>
@@ -266,7 +266,7 @@ export default function App() {
       <ToastProvider>
         <Ambient />
         <div className="app">
-          <TopBar metaLink={settings.metaLink} paymentsEnabled={paymentsEnabled} />
+          <TopBar paymentsEnabled={paymentsEnabled} />
           <main className="main" key={location.pathname}>
             <Routes>
               <Route path="/" element={<HomePage games={games} payments={payments} settings={settings} />} />
@@ -301,10 +301,10 @@ export default function App() {
           </main>
           <Footer settings={settings} />
         </div>
-        <Dock metaLink={settings.metaLink} paymentsEnabled={paymentsEnabled} />
+        <Dock paymentsEnabled={paymentsEnabled} />
         {settings.chatEnabled && !isAdmin && !location.pathname.startsWith("/admin") ? (
           <Suspense fallback={null}>
-            <ChatWidget />
+            <ChatWidget avatars={settings.chatAvatars} />
           </Suspense>
         ) : null}
       </ToastProvider>

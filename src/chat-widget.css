@@ -280,3 +280,9 @@
 }
 
 @media print { .cw-root { display: none; } }
+
+/* ---------- picture on the launcher and in the panel header ---------- */
+.cw-av-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 50%; transition: opacity 0.25s ease, transform 0.3s var(--ease); }
+.cw-launcher.is-open .cw-av-img { opacity: 0; transform: scale(0.6); }
+.cw-head-av { position: relative; overflow: hidden; }
+.cw-head-av .cw-av-img { position: static; display: block; }

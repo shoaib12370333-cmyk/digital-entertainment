@@ -987,7 +987,20 @@ function Conversation({ identity, t, blocked, onRetry, draftRef, pic }) {
 /* =========================================================
    Widget root: launcher + panel
    ========================================================= */
-export default function ChatWidget() {
+/** One of the admin's pictures, chosen by the current 12-hour slot, so everybody sees the same one and it changes twice a day. */
+const AVATAR_SLOT_MS = 12 * 60 * 60 * 1000;
+function pickAvatar(avatars, now = Date.now()) {
+  const list = (Array.isArray(avatars) ? avatars : []).filter((a) => typeof a === "string" && a.startsWith("data:image/"));
+  if (!list.length) return "";
+  const slot = Math.floor(now / AVATAR_SLOT_MS);
+  const at = (n) => (Math.imul(n, 2654435761) >>> 0) % list.length;
+  let i = at(slot);
+  if (list.length > 1 && i === at(slot - 1)) i = (i + 1) % list.length; // never the same picture twice in a row
+  return list[i];
+}
+
+export default function ChatWidget({ avatars }) {
+  const avatar = useMemo(() => pickAvatar(avatars), [avatars]);
   const t = useText();
   const { identity: rawIdentity, ready } = useChatIdentity();
 
@@ -1124,7 +1137,7 @@ export default function ChatWidget() {
         aria-controls={mounted ? panelId : undefined}
       >
         <span className="cw-ring" aria-hidden="true" />
-        <span className="cw-ico cw-ico-chat"><Icon name="message" size={27} stroke={1.8} fill /></span>
+        {avatar ? <img className="cw-av-img" src={avatar} alt="" draggable={false} /> : <span className="cw-ico cw-ico-chat"><Icon name="message" size={27} stroke={1.8} fill /></span>}
         <span className="cw-ico cw-ico-close"><Icon name="x" size={24} stroke={2.4} /></span>
         {unread > 0 && !isOpen ? <span className="cw-badge" key={unread} aria-hidden="true">{badge}</span> : null}
       </button>
@@ -1135,7 +1148,7 @@ export default function ChatWidget() {
       {mounted ? (
         <section id={panelId} ref={panelRef} className="cw-panel" data-state={phase} role="dialog" aria-label={t.chatTitle} tabIndex={-1}>
           <header className="cw-head">
-            <span className="cw-head-av"><Crest size={30} glow={false} /></span>
+            <span className="cw-head-av">{avatar ? <img className="cw-av-img" src={avatar} alt="" draggable={false} /> : <Crest size={30} glow={false} />}</span>
             <div className="cw-head-txt">
               <h2 className="cw-title accent-text">{t.chatTitle}</h2>
               <p className="cw-sub">

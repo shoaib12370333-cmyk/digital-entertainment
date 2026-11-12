@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { auth, signInWithEmailAndPassword, signOut } from "./firebase.js";
 import { DEFAULT_TEXT, DEFAULT_CASHOUT_FIELDS, DEFAULT_SETTINGS, TEXT_GROUPS, useText } from "./text.js";
-import { Icon, Crest, CountUp, Switch, Field, Modal, Spinner, useToast, uid, fileToDataUrl } from "./ui.jsx";
+import { Icon, Crest, CountUp, Switch, Field, Modal, Spinner, useToast, uid, fileToDataUrl, fileToSquareDataUrl } from "./ui.jsx";
 import { useAdminChats, useAdminMarker, isAdminUser } from "./chat.js";
 import { playPing, readSoundPref, writeSoundPref } from "./notify.js";
 import AdminChat from "./AdminChat.jsx";
@@ -387,6 +387,7 @@ function SettingsEditor({ settings, setSettings }) {
     cashoutEnabled: s.cashoutEnabled !== false,
     cashoutMetaLink: s.cashoutMetaLink || "",
     chatEnabled: !!s.chatEnabled,
+    chatAvatars: Array.isArray(s.chatAvatars) ? s.chatAvatars : [],
   });
   const [d, setD] = useState(pick(settings));
   const dirty = JSON.stringify(d) !== JSON.stringify(pick(settings));
@@ -405,8 +406,21 @@ function SettingsEditor({ settings, setSettings }) {
       cashoutEnabled: d.cashoutEnabled,
       cashoutMetaLink: d.cashoutMetaLink.trim(),
       chatEnabled: d.chatEnabled,
+      chatAvatars: d.chatAvatars,
     });
     toast("Settings saved");
+  };
+
+  const addAvatar = async (e) => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = "";
+    if (!file || d.chatAvatars.length >= 4) return;
+    try {
+      const url = await fileToSquareDataUrl(file);
+      setD((cur) => ({ ...cur, chatAvatars: [...cur.chatAvatars, url].slice(0, 4) }));
+    } catch {
+      toast("Could not read that picture. Try a JPG or PNG.", "bad");
+    }
   };
 
   const Toggle = ({ k, title, desc }) => (
@@ -439,6 +453,24 @@ function SettingsEditor({ settings, setSettings }) {
       <div className="card card-pad">
         <div className="panel-head"><div><h3>Live chat</h3><p>Shows a chat button to visitors. Turn it on only after the one-time Firebase setup (see the Live Chat tab).</p></div></div>
         <Toggle k="chatEnabled" title="Enable live chat for visitors" desc="Visitors can chat as a guest or with a username and password, and you reply from the Live Chat tab." />
+        <div className="field" style={{ marginTop: 14 }}>
+          <span className="label">Chat button pictures (up to 4)</span>
+          <div className="avatar-slots">
+            {d.chatAvatars.map((src, i) => (
+              <div className="avatar-slot" key={i}>
+                <img src={src} alt="" />
+                <button type="button" onClick={() => setD({ ...d, chatAvatars: d.chatAvatars.filter((_, k) => k !== i) })} aria-label="Remove picture"><Icon name="x" size={14} /></button>
+              </div>
+            ))}
+            {d.chatAvatars.length < 4 ? (
+              <label className="avatar-slot add" title="Add a picture">
+                <input type="file" accept="image/*" onChange={addAvatar} />
+                <Icon name="plus" size={20} />
+              </label>
+            ) : null}
+          </div>
+          <span className="hint">One of these shows on the chat button and changes every 12 hours. Use only pictures you have the right to use. Leave empty for the default chat icon.</span>
+        </div>
       </div>
 
       <div className="card card-pad">

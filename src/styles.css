@@ -339,7 +339,7 @@ button { font-family: inherit; }
 .footer-links a:hover { color: var(--accent-1); transform: translateX(3px); }
 .socials { display: flex; gap: 10px; flex-wrap: wrap; }
 .social {
-  width: 46px; height: 46px; display: grid; place-items: center; border-radius: 14px; color: var(--text-dim); text-decoration: none;
+  height: 42px; padding: 0 16px; display: inline-flex; align-items: center; gap: 9px; font-weight: 700; font-size: 14px; border-radius: 14px; color: var(--text-dim); text-decoration: none;
   background: var(--glass); border: 1px solid var(--line); transition: all 0.3s var(--ease);
 }
 .social:hover { color: var(--accent-1); border-color: rgba(57, 255, 136, 0.6); background: rgba(57, 255, 136, 0.09); transform: translateY(-4px); box-shadow: 0 12px 24px -10px rgba(57, 255, 136, 0.5); }
@@ -538,12 +538,13 @@ button { font-family: inherit; }
 .admin-main { min-width: 0; display: flex; flex-direction: column; gap: 22px; }
 .admin-title { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
 .admin-title h1 { margin: 6px 0 0; font-family: var(--font-display); font-size: clamp(26px, 3.4vw, 36px); text-transform: uppercase; letter-spacing: 0.04em; }
-.kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
-.kpi { padding: 20px; display: flex; flex-direction: column; gap: 14px; overflow: hidden; }
-.kpi .ico { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 12px; color: var(--accent-2); background: rgba(57, 255, 136, 0.09); border: 1px solid rgba(57, 255, 136, 0.25); }
+.kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.kpi { padding: 12px 14px; display: grid; grid-template-columns: auto 1fr; column-gap: 12px; row-gap: 2px; align-items: center; overflow: hidden; }
+.kpi .ico { grid-row: 1 / span 2; }
+.kpi .ico { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 12px; color: var(--accent-2); background: rgba(57, 255, 136, 0.09); border: 1px solid rgba(57, 255, 136, 0.25); }
 .kpi.red .ico { color: var(--accent2-1); background: rgba(225, 29, 156, 0.1); border-color: rgba(255, 92, 120, 0.3); }
-.kpi b { font-family: var(--font-display); font-size: 34px; line-height: 1; font-weight: 800; }
-.kpi > span { font-size: 11.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-faint); font-weight: 800; }
+.kpi b { font-family: var(--font-display); font-size: 22px; line-height: 1; font-weight: 800; }
+.kpi > span { font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-faint); font-weight: 800; }
 
 .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
 .panel-head h3 { font-family: var(--font-display); letter-spacing: 0.06em; text-transform: uppercase; font-size: 17px; margin: 0; }
@@ -697,10 +698,19 @@ button { font-family: inherit; }
   .brand-name small { display: none; }
   .brand-name { font-size: 16px; }
   .kpis { gap: 12px; }
-  .kpi b { font-size: 28px; }
+  .kpi b { font-size: 20px; }
 }
 @media (hover: none) { .game-card { transform: none !important; } }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; scroll-behavior: auto !important; }
   .reveal { opacity: 1; transform: none; }
 }
+
+/* ---------- chat button pictures (admin settings) ---------- */
+.avatar-slots { display: flex; gap: 10px; flex-wrap: wrap; }
+.avatar-slot { position: relative; width: 64px; height: 64px; border-radius: 50%; overflow: hidden; border: 1px solid var(--line-2); background: var(--glass); display: grid; place-items: center; color: var(--text-dim); cursor: pointer; }
+.avatar-slot img { width: 100%; height: 100%; object-fit: cover; }
+.avatar-slot input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.avatar-slot.add { border-style: dashed; }
+.avatar-slot.add:hover { color: var(--accent-1); border-color: rgba(57, 255, 136, 0.6); }
+.avatar-slot button { position: absolute; top: 2px; right: 2px; width: 20px; height: 20px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; cursor: pointer; color: #fff; background: rgba(0, 0, 0, 0.7); }

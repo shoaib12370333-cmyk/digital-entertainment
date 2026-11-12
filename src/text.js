@@ -19,7 +19,6 @@ export const DEFAULT_TEXT = {
   siteTag: "Gaming hub",
   navGames: "Games",
   navPayments: "Payments",
-  navContact: "Contact support",
   navCashout: "Cash Out",
 
   heroBadge: "Now live",
@@ -70,7 +69,7 @@ export const DEFAULT_TEXT = {
 
 /* Admin "Site Text" editor is generated from this list. [key, label] */
 export const TEXT_GROUPS = [
-  { title: "Brand & navigation", fields: [["siteName", "Site name"], ["siteTag", "Small tag under the site name"], ["navGames", "Nav: Games label"], ["navPayments", "Nav: Payments label"], ["navContact", "Nav: Contact support label"], ["navCashout", "Nav: Cash Out button"]] },
+  { title: "Brand & navigation", fields: [["siteName", "Site name"], ["siteTag", "Small tag under the site name"], ["navGames", "Nav: Games label"], ["navPayments", "Nav: Payments label"], ["navCashout", "Nav: Cash Out button"]] },
   { title: "Home hero", fields: [["heroBadge", "Badge"], ["heroTitle", "Headline"], ["heroSubtitle", "Subtitle"], ["heroPrimaryBtn", "Primary button"], ["heroSecondaryBtn", "Secondary button"]] },
   { title: "Games section", fields: [["homeEyebrow", "Eyebrow (small label above title)"], ["homeTitle", "Title"], ["homeSubtitle", "Subtitle"], ["searchPlaceholder", "Search box placeholder"], ["noGamesText", "\"No games\" message"], ["downloadBtn", "\"Download now\" button"], ["needAccountBtn", "\"Need account?\" button"]] },
   { title: "How it works", fields: [["howEyebrow", "Eyebrow"], ["howTitle", "Title"], ["how1Title", "Step 1 title"], ["how1Text", "Step 1 text"], ["how2Title", "Step 2 title"], ["how2Text", "Step 2 text"], ["how3Title", "Step 3 title"], ["how3Text", "Step 3 text"], ["ctaTitle", "Bottom banner title"], ["ctaText", "Bottom banner text"]] },

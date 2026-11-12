@@ -10,7 +10,8 @@
   --cw-accent: linear-gradient(180deg, #b6ffd0 0%, #39ff88 42%, #0fb350 100%);
   --cw-gap: 24px;
   --cw-launcher: 60px;
-  --cw-bottom: calc(var(--cw-gap) + var(--cw-launcher) + 14px);
+  --cw-label: 22px; /* room under the launcher for its "Live chat" caption */
+  --cw-bottom: calc(var(--cw-gap) + var(--cw-label) + var(--cw-launcher) + 14px);
   font-family: var(--font-body);
 }
 /* the global .sr-only is absolutely positioned; pin ours to the corner so it can never add a pixel of page height */
@@ -20,7 +21,7 @@
 .cw-launcher {
   position: fixed; z-index: 80;
   right: calc(var(--cw-gap) + env(safe-area-inset-right));
-  bottom: calc(var(--cw-gap) + env(safe-area-inset-bottom));
+  bottom: calc(var(--cw-gap) + var(--cw-label) + env(safe-area-inset-bottom));
   width: var(--cw-launcher); height: var(--cw-launcher); padding: 0; border: 0; border-radius: 50%; cursor: pointer;
   display: grid; place-items: center; color: #03170b; background: var(--cw-accent);
   box-shadow: 0 0 0 1px rgba(182, 255, 208, 0.6) inset, 0 1px 0 rgba(255, 255, 255, 0.7) inset, 0 16px 34px -8px rgba(57, 255, 136, 0.6), 0 10px 26px rgba(0, 0, 0, 0.55);
@@ -235,7 +236,8 @@
 /* ---------- phones: full-screen sheet, launcher clear of the dock ---------- */
 @media (max-width: 760px) {
   .cw-root { --cw-gap: 16px; --cw-launcher: 58px; }
-  .cw-launcher { right: calc(16px + env(safe-area-inset-right)); bottom: calc(96px + env(safe-area-inset-bottom)); }
+  .cw-launcher { right: calc(16px + env(safe-area-inset-right)); bottom: calc(96px + var(--cw-label) + env(safe-area-inset-bottom)); }
+  .cw-label { bottom: calc(96px + env(safe-area-inset-bottom)); }
   .cw-launcher.is-open { display: none; }
 
   .cw-panel {
@@ -286,3 +288,12 @@
 .cw-launcher.is-open .cw-av-img { opacity: 0; transform: scale(0.6); }
 .cw-head-av { position: relative; overflow: hidden; }
 .cw-head-av .cw-av-img { position: static; display: block; }
+
+/* ---------- caption under the launcher ---------- */
+.cw-label {
+  position: fixed; z-index: 80; width: var(--cw-launcher); text-align: center; pointer-events: none;
+  right: calc(var(--cw-gap) + env(safe-area-inset-right)); bottom: calc(var(--cw-gap) + env(safe-area-inset-bottom));
+  font-size: 11px; font-weight: 800; letter-spacing: 0.04em; white-space: nowrap; line-height: 18px; color: var(--text);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9); transition: opacity 0.2s ease;
+}
+.cw-label.is-open { opacity: 0; }

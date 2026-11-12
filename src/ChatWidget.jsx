@@ -1140,6 +1140,7 @@ export default function ChatWidget({ avatars }) {
         <span className="cw-ico cw-ico-close"><Icon name="x" size={24} stroke={2.4} /></span>
         {unread > 0 && !isOpen ? <span className="cw-badge" key={unread} aria-hidden="true">{badge}</span> : null}
       </button>
+      <span className={`cw-label ${isOpen ? "is-open" : ""}`} aria-hidden="true">Live chat</span>
       <span className="sr-only" role="status" aria-live="polite">
         {unread > 0 && !isOpen ? `${unread} new ${unread === 1 ? "message" : "messages"} from support` : ""}
       </span>

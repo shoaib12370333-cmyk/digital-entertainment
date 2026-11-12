@@ -82,21 +82,26 @@ export function Crest({ size = 34, glow = true }) {
     <svg width={size} height={size} viewBox="0 0 48 48" fill="none" className={glow ? "crest-glow" : undefined} aria-hidden="true">
       <defs>
         <linearGradient id={`g${id}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#d6faff" />
-          <stop offset="0.5" stopColor="#4ee1ff" />
-          <stop offset="1" stopColor="#0c82b0" />
+          <stop offset="0" stopColor="#e2ffe9" />
+          <stop offset="0.5" stopColor="#39ff88" />
+          <stop offset="1" stopColor="#0a9440" />
         </linearGradient>
-        <radialGradient id={`r${id}`} cx="50%" cy="40%" r="70%">
-          <stop offset="0" stopColor="#0f1840" />
-          <stop offset="1" stopColor="#090d1a" />
+        <linearGradient id={`d${id}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#fff3b0" />
+          <stop offset="0.55" stopColor="#ffd24a" />
+          <stop offset="1" stopColor="#d98a0b" />
+        </linearGradient>
+        <radialGradient id={`r${id}`} cx="50%" cy="35%" r="75%">
+          <stop offset="0" stopColor="#2a0a22" />
+          <stop offset="1" stopColor="#040705" />
         </radialGradient>
       </defs>
-      <path d="M24 3 42 13.5v21L24 45 6 34.5v-21z" fill={`url(#r${id})`} stroke={`url(#g${id})`} strokeWidth="1.8" strokeLinejoin="round" />
-      <path d="M24 8 37.5 15.8v16.4L24 40 10.5 32.2V15.8z" stroke="rgba(78, 225, 255, .28)" strokeWidth=".8" />
-      <path d="M19.5 16.5v15l13-7.5z" stroke={`url(#g${id})`} strokeWidth="2.4" strokeLinejoin="round" />
-      <circle cx="24" cy="3" r="1.7" fill="#4ee1ff" />
-      <circle cx="42" cy="34.5" r="1.7" fill="#4ee1ff" />
-      <circle cx="6" cy="34.5" r="1.7" fill="#7c3aed" />
+      <path d="M24 2.5 43 13.5v21L24 45.5 5 34.5v-21z" fill={`url(#r${id})`} stroke={`url(#g${id})`} strokeWidth="1.8" strokeLinejoin="round" />
+      <path d="M24 7.5 39 16v16L24 40.5 9 32V16z" stroke="rgba(57, 255, 136, .3)" strokeWidth=".8" />
+      <text x="24" y="31" textAnchor="middle" fontFamily="'Chakra Petch', 'Segoe UI', sans-serif" fontWeight="700" fontSize="19" letterSpacing="-0.5" fill={`url(#d${id})`} stroke="rgba(120, 60, 0, .45)" strokeWidth=".4">777</text>
+      <circle cx="24" cy="2.5" r="1.7" fill="#39ff88" />
+      <circle cx="43" cy="34.5" r="1.7" fill="#ffd24a" />
+      <circle cx="5" cy="34.5" r="1.7" fill="#e11d9c" />
     </svg>
   );
 }

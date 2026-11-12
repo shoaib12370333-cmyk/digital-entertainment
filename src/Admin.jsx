@@ -276,7 +276,7 @@ function CashOutAdmin({ fields, onSave, cashouts, settings, setSettings, onUpdat
               {local.map((f) => (
                 <div key={f.id} className="req-card" style={{ gap: 12 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                    <span className={`badge ${f.type === "payment" ? "cyan" : ""}`}>{f.type === "payment" ? "Payment method" : "Extra field"}</span>
+                    <span className={`badge ${f.type === "payment" ? "accent" : ""}`}>{f.type === "payment" ? "Payment method" : "Extra field"}</span>
                     <label style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10, fontSize: 13, fontWeight: 700 }}>
                       <span className="muted">Active</span>
                       <Switch checked={f.active !== false} onChange={(v) => toggle(f.id, { active: v })} label={`${f.name} active`} />
@@ -573,7 +573,7 @@ export function AdminPage({ games, saveGameItem, removeGameItem, payments, saveP
           <div className="card kpi"><div className="ico"><Icon name="users" size={20} /></div><b className="accent-text"><CountUp value={stats.site_visits || 0} /></b><span>Site visits</span></div>
           <div className="card kpi"><div className="ico"><Icon name="download" size={20} /></div><b className="accent-text"><CountUp value={totalDownloads} /></b><span>Downloads</span></div>
           <div className="card kpi"><div className="ico"><Icon name="gamepad" size={20} /></div><b className="accent-text"><CountUp value={games.length} /></b><span>Games</span></div>
-          <div className="card kpi red"><div className="ico"><Icon name="clock" size={20} /></div><b className="violet-text"><CountUp value={pendingCount} /></b><span>Pending cash-outs</span></div>
+          <div className="card kpi red"><div className="ico"><Icon name="clock" size={20} /></div><b className="accent2-text"><CountUp value={pendingCount} /></b><span>Pending cash-outs</span></div>
         </div>
 
         {tab === "games" && (
@@ -591,7 +591,7 @@ export function AdminPage({ games, saveGameItem, removeGameItem, payments, saveP
                     <div className="pos">{g.order != null && g.order !== 9999 ? `#${g.order}` : "–"}</div>
                     {g.flyer ? <img src={g.flyer} alt={g.name} className="thumb" /> : <div className="thumb" />}
                     <div className="grow"><b>{g.name}</b><small>{g.downloadLink}</small></div>
-                    {g.badge ? <span className="badge cyan">{g.badge}</span> : null}
+                    {g.badge ? <span className="badge accent">{g.badge}</span> : null}
                     <div className="row-actions">
                       <button onClick={() => setGameModal(g)} className="btn btn-ghost btn-sm"><Icon name="edit" size={15} /> Edit</button>
                       <button onClick={() => deleteGame(g)} className="btn btn-danger btn-sm"><Icon name="trash" size={15} /> Delete</button>

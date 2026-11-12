@@ -41,7 +41,7 @@ function Hero({ gamesCount, paymentOptions, showPayments, cashoutOpen }) {
     el.style.setProperty("--py", ((e.clientY - r.top) / r.height - 0.5).toFixed(3));
   };
 
-  // "Enter the digital arena. Level up." -> second sentence rendered in shimmering cyan
+  // "Enter the digital arena. Level up." -> second sentence rendered in shimmering accent
   const words = String(t.heroTitle || "").trim().split(/(?<=[.!?])\s+/);
   const first = words[0];
   const rest = words.slice(1).join(" ");
@@ -55,7 +55,7 @@ function Hero({ gamesCount, paymentOptions, showPayments, cashoutOpen }) {
       <div className="hero-copy">
         <div className="hero-badge"><span className="dot live" /> {t.heroBadge}</div>
         <h1>
-          <span className="violet-text">{first}</span>
+          <span className="accent2-text">{first}</span>
           {rest ? <><br /><span className="shine">{rest}</span></> : null}
         </h1>
         <p className="lead">{t.heroSubtitle}</p>
@@ -80,7 +80,7 @@ function Hero({ gamesCount, paymentOptions, showPayments, cashoutOpen }) {
           </div>
         ) : null}
         <div className="hero-stat">
-          <b className={cashoutOpen ? "" : "violet-text"} style={cashoutOpen ? { color: "var(--ok)" } : undefined}>{cashoutOpen ? "Open" : "Paused"}</b>
+          <b className={cashoutOpen ? "" : "accent2-text"} style={cashoutOpen ? { color: "var(--ok)" } : undefined}>{cashoutOpen ? "Open" : "Paused"}</b>
           <span><span className={`dot ${cashoutOpen ? "live" : "off"}`} /> Cash-outs</span>
         </div>
       </div>

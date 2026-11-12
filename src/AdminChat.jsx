@@ -163,7 +163,7 @@ function Avatar({ chat, online }) {
 }
 
 function Tag({ chat }) {
-  return <span className={`badge ac-tag${chat.isGuest ? "" : " cyan"}`}>{chat.isGuest ? "Guest" : "Account"}</span>;
+  return <span className={`badge ac-tag${chat.isGuest ? "" : " accent"}`}>{chat.isGuest ? "Guest" : "Account"}</span>;
 }
 
 function CopyField({ label, value, emptyText = "Not available" }) {

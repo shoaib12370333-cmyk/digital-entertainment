@@ -250,8 +250,8 @@ export default function App() {
         <Ambient />
         <div className="splash" style={{ background: "transparent" }}>
           <div className="splash-inner">
-            <div className="splash-crest"><Crest size={84} /></div>
-            <div className="display" style={{ fontSize: 20, fontWeight: 800, letterSpacing: "0.18em", textTransform: "uppercase" }}>
+            <div className="splash-777" aria-label="777"><span>7</span><span>7</span><span>7</span></div>
+            <div className="splash-name display">
               Digital <span className="accent-text">Entertainment</span>
             </div>
             <div className="splash-bar" />

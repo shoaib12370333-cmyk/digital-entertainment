@@ -6,10 +6,10 @@ import App from "./App.jsx";
 
 function SetupNotice() {
   return (
-    <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 24, background: "#04060d", color: "#e9f2ff", fontFamily: "system-ui, sans-serif" }}>
+    <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 24, background: "#030504", color: "#ecfff2", fontFamily: "system-ui, sans-serif" }}>
       <div style={{ maxWidth: 520, lineHeight: 1.6 }}>
         <h1 style={{ margin: "0 0 12px", fontSize: 24 }}>Digital Entertainment: setup needed</h1>
-        <p style={{ margin: "0 0 12px", color: "#9db0cf" }}>
+        <p style={{ margin: "0 0 12px", color: "#9fbfa9" }}>
           Firebase is not connected yet. Copy <code>.env.example</code> to <code>.env</code>, paste your Firebase project keys
           into it, then restart the dev server (or redeploy). The README has the step-by-step guide.
         </p>

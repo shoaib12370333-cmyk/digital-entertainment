@@ -588,6 +588,7 @@ const Row = React.memo(function Row({ item, fresh, chatId, onImage }) {
           {hasPic ? <ChatImage chatId={chatId} msg={m} onLoad={onImage} /> : null}
           {hasFile ? <ChatFile chatId={chatId} msg={m} /> : null}
           {hasPic || hasFile ? (caption ? <span className="cw-cap">{caption}</span> : null) : caption}
+          {m.edited ? <small className="cw-edited"> (edited)</small> : null}
         </div>
         {last ? (
           <div className={`cw-meta ${m.pending ? "pending" : ""}`}>

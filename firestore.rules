@@ -190,8 +190,15 @@ service cloud.firestore {
           && hasValidAttachmentOrText()
           && request.resource.data.createdAt == request.time;
 
-        // Messages are immutable; only the admin can delete (used when clearing a conversation).
-        allow update: if false;
+        // Messages are immutable, except that the admin can reword a message the admin sent (text and edit time only).
+        // Only the admin can delete (used when clearing a conversation).
+        allow update: if isAdmin()
+          && resource.data.sender == 'admin'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'editedAt'])
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 1000
+          && request.resource.data.editedAt == request.time;
         allow delete: if isAdmin();
       }
 

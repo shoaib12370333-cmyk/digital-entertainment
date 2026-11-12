@@ -317,3 +317,16 @@
 }
 
 .ac-root .ac-chip-edit { display: inline-flex; align-items: center; gap: 6px; color: var(--accent-1); border-style: dashed; }
+
+.ac-root .ac-ticks { display: inline-flex; margin-left: 4px; color: var(--text-faint); vertical-align: -2px; }
+.ac-root .ac-ticks svg + svg { margin-left: -7px; }
+.ac-root .ac-ticks.seen { color: var(--accent-2); }
+.ac-root .ac-bubble-row { display: flex; align-items: center; gap: 6px; }
+.ac-root .ac-msg.mine .ac-bubble-row { flex-direction: row-reverse; justify-content: flex-start; }
+.ac-root .ac-editbtn { flex: none; width: 26px; height: 26px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 8px; cursor: pointer; color: var(--text-faint); background: transparent; opacity: 0; transition: opacity 0.15s ease, background 0.15s ease; }
+.ac-root .ac-msg:hover .ac-editbtn, .ac-root .ac-editbtn:focus-visible { opacity: 1; }
+.ac-root .ac-editbtn:hover { color: var(--accent-1); background: var(--glass-2); }
+@media (hover: none) { .ac-root .ac-editbtn { opacity: 0.8; } }
+.ac-root .ac-editbox { display: flex; flex-direction: column; gap: 8px; width: min(420px, 100%); }
+.ac-root .ac-msg.mine .ac-editbox { align-self: flex-end; }
+.ac-root .ac-editbtns { display: flex; gap: 8px; justify-content: flex-end; }

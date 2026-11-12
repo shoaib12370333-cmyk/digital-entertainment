@@ -4,6 +4,7 @@ import { auth, onAuthStateChanged } from "./firebase.js";
 import { Icon, Spinner, Switch, Modal, useToast } from "./ui.jsx";
 import {
   useChatMessages,
+  editAdminMessage,
   sendAdminMessage,
   markReadByAdmin,
   deleteChat,
@@ -115,6 +116,16 @@ function dayLabel(ts, now) {
   const d = new Date(ts);
   const sameYear = d.getFullYear() === new Date(now).getFullYear();
   return d.toLocaleDateString(undefined, sameYear ? { weekday: "long", day: "numeric", month: "long" } : { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+}
+
+/** One tick = sent, two ticks = the visitor has opened the chat and seen it. Admin only: visitors never see these. */
+function Ticks({ seen }) {
+  return (
+    <span className={`ac-ticks${seen ? " seen" : ""}`} title={seen ? "Seen" : "Sent"} aria-label={seen ? "Seen" : "Sent"}>
+      <Icon name="check" size={12} stroke={3} />
+      {seen ? <Icon name="check" size={12} stroke={3} /> : null}
+    </span>
+  );
 }
 
 const timeOf = (ts) => new Date(ts).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
@@ -460,6 +471,32 @@ function Conversation({ chat, now, drafts, onBack, onDeleted, replies, onEditRep
   };
 
   /* ----- message list: day separators + grouping ----- */
+  // unreadUser counts the admin messages the visitor has not seen yet: the newest that many are "sent", older ones are "seen".
+  const unseenIds = useMemo(() => {
+    const ids = new Set();
+    let left = chat.unreadUser || 0;
+    for (let i = messages.length - 1; i >= 0 && left > 0; i -= 1) {
+      if (messages[i].sender === "admin") { ids.add(messages[i].id); left -= 1; }
+    }
+    return ids;
+  }, [messages, chat.unreadUser]);
+
+  const [editing, setEditing] = useState(null); // {id, text, busy}
+  const saveEdit = async () => {
+    const e = editing;
+    if (!e || e.busy) return;
+    if (!e.text.trim()) { toast("A message cannot be empty.", "bad"); return; }
+    setEditing({ ...e, busy: true });
+    try {
+      await editAdminMessage(chat.id, e.id, e.text);
+      setEditing(null);
+      toast("Message updated");
+    } catch (err) {
+      setEditing({ ...e, busy: false });
+      toast(isPermissionError(err) ? "Permission denied. Publish the latest firestore.rules (they allow editing your own messages) and try again." : errText(err), "bad");
+    }
+  };
+
   const items = useMemo(() => {
     const out = [];
     const days = messages.map((m) => new Date(m.createdAt).toDateString());
@@ -762,18 +799,35 @@ function Conversation({ chat, now, drafts, onBack, onDeleted, replies, onEditRep
               const hasMedia = hasPic || hasFile;
               return (
                 <div key={it.key} className={`ac-msg ${mine ? "mine" : "theirs"}${it.first ? " first" : ""}${it.last ? " last" : ""}${m.pending ? " pending" : ""}`}>
-                  <div className={`ac-bubble${hasMedia ? (body ? " has-pic" : " has-pic pic-only") : ""}${hasFile ? " has-file" : ""}`} title={fullStamp(m.createdAt)}>
-                    <span className="sr-only">{mine ? "You: " : `${chat.name}: `}</span>
-                    {hasPic ? <Thumb chatId={chat.id} thumb={m.thumb} imageId={m.imageId} onLoad={repin} /> : null}
-                    {hasFile ? <ChatFile chatId={chat.id} msg={m} /> : null}
-                    {hasMedia ? (body ? <span className="ac-cap">{body}</span> : null) : body}
-                  </div>
+                  {editing && editing.id === m.id ? (
+                    <div className="ac-editbox">
+                      <textarea className="textarea" rows={3} value={editing.text} maxLength={MAX_MESSAGE_LENGTH} autoFocus
+                        onChange={(e) => setEditing({ ...editing, text: e.target.value })}
+                        onKeyDown={(e) => { if (e.key === "Escape") setEditing(null); }} />
+                      <div className="ac-editbtns">
+                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditing(null)} disabled={editing.busy}>Cancel</button>
+                        <button type="button" className="btn btn-primary btn-sm" onClick={saveEdit} disabled={editing.busy}>{editing.busy ? <Spinner /> : <Icon name="save" size={14} />} Save</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="ac-bubble-row">
+                      {mine && !m.pending && !hasMedia && m.text ? (
+                        <button type="button" className="ac-editbtn" onClick={() => setEditing({ id: m.id, text: m.text, busy: false })} aria-label="Edit this message" title="Edit this message"><Icon name="edit" size={14} /></button>
+                      ) : null}
+                      <div className={`ac-bubble${hasMedia ? (body ? " has-pic" : " has-pic pic-only") : ""}${hasFile ? " has-file" : ""}`} title={fullStamp(m.createdAt)}>
+                        <span className="sr-only">{mine ? "You: " : `${chat.name}: `}</span>
+                        {hasPic ? <Thumb chatId={chat.id} thumb={m.thumb} imageId={m.imageId} onLoad={repin} /> : null}
+                        {hasFile ? <ChatFile chatId={chat.id} msg={m} /> : null}
+                        {hasMedia ? (body ? <span className="ac-cap">{body}</span> : null) : body}
+                      </div>
+                    </div>
+                  )}
                   {it.last || (mine && m.pending) ? (
                     <div className="ac-meta">
                       {mine && m.pending ? (
                         <><Spinner /> Sending...</>
                       ) : (
-                        <>{timeOf(m.createdAt)}{mine ? <Icon name="check" size={12} /> : null}</>
+                        <>{m.edited ? "edited · " : ""}{timeOf(m.createdAt)}{mine ? <Ticks seen={!unseenIds.has(m.id)} /> : null}</>
                       )}
                     </div>
                   ) : null}

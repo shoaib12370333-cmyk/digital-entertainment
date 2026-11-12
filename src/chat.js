@@ -257,6 +257,7 @@ function normalizeMessage(snap) {
     fileId: typeof d.fileId === "string" ? d.fileId : "",
     fileName: typeof d.fileName === "string" ? d.fileName.slice(0, MAX_FILE_NAME) : "",
     fileSize: Number.isFinite(d.fileSize) ? d.fileSize : 0,
+    edited: !!d.editedAt,
   };
 }
 
@@ -418,6 +419,12 @@ export async function sendAdminMessage(chatId, text, attachment = null) {
     unreadUser: increment(1),
   });
   await batch.commit();
+}
+
+/** Admin only: change the text of a message the admin sent. Pictures and files keep their attachment; only the words change. */
+export async function editAdminMessage(chatId, messageId, text) {
+  const t = cleanText(text, false);
+  await updateDoc(doc(messagesCol(chatId), messageId), { text: t, editedAt: serverTimestamp() });
 }
 
 export async function markReadByAdmin(chatId) {

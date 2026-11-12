@@ -22,6 +22,8 @@ services:
         sync: false
       - key: VITE_FIREBASE_APP_ID
         sync: false
+      - key: VITE_SITE_URL
+        sync: false
     routes:
       # Single-page app: /payments, /cashout and /admin must all serve index.html
       - type: rewrite

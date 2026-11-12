@@ -388,6 +388,8 @@ function SettingsEditor({ settings, setSettings }) {
     cashoutMetaLink: s.cashoutMetaLink || "",
     chatEnabled: !!s.chatEnabled,
     chatAvatars: Array.isArray(s.chatAvatars) ? s.chatAvatars : [],
+    chatAway: !!s.chatAway,
+    chatAwayText: s.chatAwayText || DEFAULT_SETTINGS.chatAwayText,
   });
   const [d, setD] = useState(pick(settings));
   const dirty = JSON.stringify(d) !== JSON.stringify(pick(settings));
@@ -407,6 +409,8 @@ function SettingsEditor({ settings, setSettings }) {
       cashoutMetaLink: d.cashoutMetaLink.trim(),
       chatEnabled: d.chatEnabled,
       chatAvatars: d.chatAvatars,
+      chatAway: d.chatAway,
+      chatAwayText: d.chatAwayText.trim() || DEFAULT_SETTINGS.chatAwayText,
     });
     toast("Settings saved");
   };
@@ -453,6 +457,8 @@ function SettingsEditor({ settings, setSettings }) {
       <div className="card card-pad">
         <div className="panel-head"><div><h3>Live chat</h3><p>Shows a chat button to visitors. Turn it on only after the one-time Firebase setup (see the Live Chat tab).</p></div></div>
         <Toggle k="chatEnabled" title="Enable live chat for visitors" desc="Visitors can chat as a guest or with a username and password, and you reply from the Live Chat tab." />
+        <Toggle k="chatAway" title="We are away" desc="Shows an 'away' notice at the top of the chat window. Visitors can still leave messages." />
+        <Field label="Away message" className="full"><textarea value={d.chatAwayText} onChange={set("chatAwayText")} className="textarea" rows={2} maxLength={240} /></Field>
         <div className="field" style={{ marginTop: 14 }}>
           <span className="label">Chat button pictures (up to 4)</span>
           <div className="avatar-slots">

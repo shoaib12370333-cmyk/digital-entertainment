@@ -6,11 +6,40 @@ import { Icon, Crest, ToastProvider, useSpotlight } from "./ui.jsx";
 import HomePage from "./Home.jsx";
 import PaymentsPage from "./Payments.jsx";
 import CashOutPage from "./CashOut.jsx";
+import LegalPage from "./Legal.jsx";
 import { LoginPage, AdminPage } from "./Admin.jsx";
 import { isAdminUser } from "./chat.js";
 import "./styles.css";
 
 const LOAD_TIMEOUT_MS = 8000;
+
+/* ---------- Age notice: asked once per browser, never on the admin page ---------- */
+const AGE_KEY = "de_age_ok";
+function AgeGate() {
+  const t = useText();
+  const location = useLocation();
+  const [ok, setOk] = useState(() => {
+    try { return localStorage.getItem(AGE_KEY) === "1"; } catch { return false; }
+  });
+  if (ok || location.pathname.startsWith("/admin")) return null;
+  const confirm = () => {
+    try { localStorage.setItem(AGE_KEY, "1"); } catch { /* the notice just shows again next visit */ }
+    setOk(true);
+  };
+  return (
+    <div className="modal-backdrop age-gate">
+      <div className="card modal" role="alertdialog" aria-modal="true" aria-labelledby="age-title" style={{ textAlign: "center" }}>
+        <div style={{ display: "inline-block", marginBottom: 12 }}><Crest size={56} /></div>
+        <h3 id="age-title" className="display" style={{ fontSize: 24, margin: "0 0 8px" }}>{t.ageTitle}</h3>
+        <p className="muted" style={{ margin: "0 0 22px" }}>{t.ageText}</p>
+        <div style={{ display: "flex", gap: 10, flexDirection: "column" }}>
+          <button type="button" className="btn btn-primary btn-lg" onClick={confirm} autoFocus>{t.ageYes}</button>
+          <button type="button" className="btn btn-ghost" onClick={() => { window.location.href = "https://www.google.com/"; }}>{t.ageNo}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // Loaded only when live chat is switched on, so sites without chat do not pay for it.
 const ChatWidget = React.lazy(() => import("./ChatWidget.jsx"));
@@ -118,6 +147,8 @@ function Footer({ settings }) {
               <Link to="/">{t.navGames}</Link>
               {settings.paymentsEnabled !== false ? <Link to="/payments">{t.navPayments}</Link> : null}
               {settings.cashoutEnabled !== false ? <Link to="/cashout">{t.navCashout}</Link> : null}
+              <Link to="/terms">{t.termsTitle}</Link>
+              <Link to="/privacy">{t.privacyTitle}</Link>
             </div>
           </div>
           <div>
@@ -134,7 +165,7 @@ function Footer({ settings }) {
         </div>
         <div className="footer-bottom">
           <span>&copy; {new Date().getFullYear()} {t.siteName}. All rights reserved.</span>
-          <span>Built for players.</span>
+          <span>{t.ageFooter}</span>
         </div>
       </div>
     </footer>
@@ -271,6 +302,8 @@ export default function App() {
             <Routes>
               <Route path="/" element={<HomePage games={games} payments={payments} settings={settings} />} />
               <Route path="/payments" element={<PaymentsPage payments={payments} enabled={paymentsEnabled} />} />
+              <Route path="/terms" element={<LegalPage kind="terms" />} />
+              <Route path="/privacy" element={<LegalPage kind="privacy" />} />
               <Route path="/cashout" element={<CashOutPage games={games} settings={settings} cashoutFields={cashoutFields} saveCashoutRequest={saveCashoutRequest} />} />
               <Route
                 path="/admin"
@@ -302,9 +335,10 @@ export default function App() {
           <Footer settings={settings} />
         </div>
         <Dock paymentsEnabled={paymentsEnabled} />
+        <AgeGate />
         {settings.chatEnabled && !isAdmin && !location.pathname.startsWith("/admin") ? (
           <Suspense fallback={null}>
-            <ChatWidget avatars={settings.chatAvatars} />
+            <ChatWidget avatars={settings.chatAvatars} away={!!settings.chatAway} awayText={settings.chatAwayText} />
           </Suspense>
         ) : null}
       </ToastProvider>

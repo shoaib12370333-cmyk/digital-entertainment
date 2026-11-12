@@ -9,6 +9,8 @@ export const DEFAULT_SETTINGS = {
   paymentsEnabled: true, // admin can hide the whole Payments page (nav, footer and route)
   cashoutEnabled: true,
   cashoutMetaLink: "",
+  chatAway: false, // shows a "we are away" notice in the chat window
+  chatAwayText: "We are offline right now. Leave your message and we will reply as soon as we are back.",
   chatEnabled: false, // stays off until the Firebase chat setup in the README is done
   cashoutMessageTemplate: "Hello, I would like to request a cash-out.\n\nGame: {game}\nGame Username: {username}\nCash-Out Amount: ${amount}\nPayment Method: {method}\nPayment Details: {details}\nRequest ID: {requestId}",
 };
@@ -60,6 +62,43 @@ export const DEFAULT_TEXT = {
   chatWelcome: "Hi! How can we help you today?",
   chatPlaceholder: "Type your message...",
 
+  termsTitle: "Terms of Service",
+  termsBody: `These terms are a starting point. Edit them in Admin > Site Text > Legal pages and have them checked by a lawyer for your country.
+
+1. Who can use this site
+You must be at least 18 years old, or the legal age in your country if that is higher. By using the site you confirm that you are allowed to do so where you live.
+
+2. Accounts and games
+Game accounts are created for you by our team on request. Keep your login details private. You are responsible for everything done with your account.
+
+3. Payments and cash-outs
+Payments are sent to the methods listed on the Payments page. Send us proof of payment in the live chat. Cash-out requests are reviewed by our team and can be delayed or refused if something looks wrong, for example wrong details or a suspected fraud.
+
+4. Responsible play
+Only play with money you can afford to lose. Playing is not a way to make money. If it stops being fun, stop and tell us.
+
+5. Changes
+We can change these terms or the site at any time. Using the site after a change means you accept it.`,
+  privacyTitle: "Privacy Policy",
+  privacyBody: `This policy is a starting point. Edit it in Admin > Site Text > Legal pages and have it checked by a lawyer for your country.
+
+What we collect
+Messages, pictures and files you send in live chat; the details you type into a cash-out request (game, username, amount, payment method and details); and simple counters such as site visits and download clicks. If you create a chat account we store your chosen username.
+
+How we use it
+To answer your messages, to review and pay cash-outs, and to keep the site working. We do not sell your information.
+
+Where it is stored
+Your data is stored with Google Firebase. Our team can read chats and cash-out requests from the admin panel.
+
+Your choices
+Ask us in the live chat to delete your conversation or your data and we will do it.`,
+  ageTitle: "Are you 18 or older?",
+  ageText: "This site is only for adults. Please confirm your age to continue.",
+  ageYes: "Yes, I am 18 or older",
+  ageNo: "No, leave",
+  ageFooter: "18+ only. Please play responsibly.",
+
   loginTitle: "Admin access",
   loginUsernamePlaceholder: "Admin email",
   loginPasswordPlaceholder: "Password",
@@ -75,6 +114,8 @@ export const TEXT_GROUPS = [
   { title: "How it works", fields: [["howEyebrow", "Eyebrow"], ["howTitle", "Title"], ["how1Title", "Step 1 title"], ["how1Text", "Step 1 text"], ["how2Title", "Step 2 title"], ["how2Text", "Step 2 text"], ["how3Title", "Step 3 title"], ["how3Text", "Step 3 text"], ["ctaTitle", "Bottom banner title"], ["ctaText", "Bottom banner text"]] },
   { title: "Payments page", fields: [["paymentsEyebrow", "Eyebrow"], ["paymentsTitle", "Title"], ["paymentsSubtitle", "Subtitle"], ["paymentsNote", "Note shown above the methods"], ["noPaymentsText", "\"No payment methods\" message"], ["openLinkBtn", "\"Open link\" button"], ["paymentsOffTitle", "Title when the page is switched off"], ["paymentsOffText", "Text when the page is switched off"]] },
   { title: "Live chat", fields: [["chatTitle", "Chat window title"], ["chatSubtitle", "Chat window subtitle"], ["chatWelcome", "Welcome message (shown before the first reply)"], ["chatPlaceholder", "Message box placeholder"]] },
+  { title: "Legal pages", fields: [["termsTitle", "Terms page title"], ["termsBody", "Terms text (blank line = new paragraph)"], ["privacyTitle", "Privacy page title"], ["privacyBody", "Privacy text (blank line = new paragraph)"]] },
+  { title: "Age notice", fields: [["ageTitle", "Pop-up title"], ["ageText", "Pop-up text"], ["ageYes", "Confirm button"], ["ageNo", "Leave button"], ["ageFooter", "Footer line"]] },
   { title: "Login page", fields: [["loginTitle", "Title"], ["loginUsernamePlaceholder", "Username field placeholder"], ["loginPasswordPlaceholder", "Password field placeholder"], ["loginBtn", "\"Log in\" button"]] },
   { title: "Footer", fields: [["footerConnectText", "\"Connect with us\" text"]] },
 ];

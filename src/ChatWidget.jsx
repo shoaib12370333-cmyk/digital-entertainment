@@ -998,7 +998,7 @@ function pickAvatar(avatars, now = Date.now()) {
   return list[i];
 }
 
-export default function ChatWidget({ avatars }) {
+export default function ChatWidget({ avatars, away = false, awayText = "" }) {
   const avatar = useMemo(() => pickAvatar(avatars), [avatars]);
   const t = useText();
   const { identity: rawIdentity, ready } = useChatIdentity();
@@ -1152,8 +1152,8 @@ export default function ChatWidget({ avatars }) {
             <div className="cw-head-txt">
               <h2 className="cw-title accent-text">{t.chatTitle}</h2>
               <p className="cw-sub">
-                <span className="dot live" aria-hidden="true" />
-                <span>{t.chatSubtitle}</span>
+                <span className={`dot ${away ? "off" : "live"}`} aria-hidden="true" />
+                <span>{away ? "Away" : t.chatSubtitle}</span>
               </p>
             </div>
             {live ? (
@@ -1163,6 +1163,12 @@ export default function ChatWidget({ avatars }) {
               <Icon name="x" size={18} />
             </button>
           </header>
+          {away && awayText ? (
+            <div className="info-box cw-note cw-away">
+              <Icon name="clock" size={16} />
+              <span>{awayText}</span>
+            </div>
+          ) : null}
           <div className="cw-body">{body}</div>
         </section>
       ) : null}

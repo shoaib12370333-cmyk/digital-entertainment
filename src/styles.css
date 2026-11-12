@@ -714,3 +714,10 @@ button { font-family: inherit; }
 .avatar-slot.add { border-style: dashed; }
 .avatar-slot.add:hover { color: var(--accent-1); border-color: rgba(57, 255, 136, 0.6); }
 .avatar-slot button { position: absolute; top: 2px; right: 2px; width: 20px; height: 20px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; cursor: pointer; color: #fff; background: rgba(0, 0, 0, 0.7); }
+
+/* ---------- legal pages and age notice ---------- */
+.legal-body { max-width: 780px; display: flex; flex-direction: column; gap: 14px; }
+.legal-body h3 { margin: 10px 0 2px; font-family: var(--font-display); font-size: 17px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--accent-1); }
+.legal-body p { margin: 0; color: var(--text-dim); line-height: 1.7; }
+.age-gate { z-index: 600; }
+.cw-away { margin: 0 14px 8px; }

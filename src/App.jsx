@@ -51,7 +51,6 @@ function Ambient() {
       <div className="orb o1" />
       <div className="orb o2" />
       <div className="orb o3" />
-      <img className="slot-bg" src="/slot-bg.png" alt="" draggable={false} />
       <div className="grid-lines" />
       <div className="noise" />
       <div className="vignette" />

@@ -722,13 +722,16 @@ button { font-family: inherit; }
 .age-gate { z-index: 600; }
 .cw-away { margin: 0 14px 8px; }
 
-/* ---------- slot machine in the page background ---------- */
-.slot-bg {
-  position: absolute; right: max(-40px, 2vw); bottom: -4vh; height: min(88vh, 780px); width: auto; max-width: none; opacity: 0.4; user-select: none;
-  filter: saturate(1.15) brightness(0.8) drop-shadow(0 0 36px rgba(57, 255, 136, 0.45)) drop-shadow(0 0 110px rgba(225, 29, 156, 0.4));
-  -webkit-mask-image: linear-gradient(180deg, #000 55%, transparent 98%); mask-image: linear-gradient(180deg, #000 55%, transparent 98%);
+/* ---------- slot machine inside the hero card ---------- */
+.hero-slot {
+  position: absolute; z-index: 2; right: 7%; bottom: -3%; height: 94%; width: auto; max-width: none; user-select: none; pointer-events: none;
+  filter: saturate(1.15) drop-shadow(0 0 28px rgba(57, 255, 136, 0.5)) drop-shadow(0 0 70px rgba(225, 29, 156, 0.45));
   animation: slotFloat 9s ease-in-out infinite;
 }
-@keyframes slotFloat { 0%, 100% { transform: translateY(0) rotate(-1deg); } 50% { transform: translateY(-14px) rotate(1deg); } }
-@media (max-width: 760px) { .slot-bg { right: -18vw; height: 62vh; opacity: 0.22; } }
-@media (prefers-reduced-motion: reduce) { .slot-bg { animation: none; } }
+@keyframes slotFloat { 0%, 100% { transform: translateY(0) rotate(-1deg); } 50% { transform: translateY(-12px) rotate(1deg); } }
+@media (max-width: 980px) { .hero-slot { opacity: 0.55; } }
+@media (max-width: 760px) { .hero-slot { height: 360px; top: 40px; bottom: auto; right: -40px; opacity: 0.9; } }
+@media (prefers-reduced-motion: reduce) { .hero-slot { animation: none; } }
+
+/* the hero card is now a dark scene with the slot machine: a soft glow behind it */
+.hero::before { content: ""; position: absolute; z-index: 1; right: 0; top: 0; bottom: 0; width: 60%; pointer-events: none; background: radial-gradient(60% 70% at 60% 55%, rgba(57, 255, 136, 0.16), transparent 70%), radial-gradient(50% 60% at 75% 60%, rgba(225, 29, 156, 0.2), transparent 70%); }

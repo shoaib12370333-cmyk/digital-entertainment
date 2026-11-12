@@ -48,9 +48,7 @@ function Hero({ gamesCount, paymentOptions, showPayments, cashoutOpen }) {
 
   return (
     <section className="hero" ref={ref} onPointerMove={onMove}>
-      <div className="hero-art" aria-hidden="true">
-        <img src="/hero-bg.webp" alt="" fetchpriority="high" />
-      </div>
+      <img className="hero-slot" src="/slot-bg.png" alt="" aria-hidden="true" draggable={false} />
       <Embers />
       <div className="hero-copy">
         <div className="hero-badge"><span className="dot live" /> {t.heroBadge}</div>

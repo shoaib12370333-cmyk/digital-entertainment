@@ -330,11 +330,10 @@ function HeaderMenu({ canUpgrade, isGuest, onUpgrade, onLogout }) {
 }
 
 /* =========================================================
-   Signed out: Guest | Log in | Sign up   (also the "upgrade guest" form)
+   Signed out: Log in | Sign up   (also the "upgrade guest" form)
    ========================================================= */
-const MODES = [["guest", "Guest"], ["login", "Log in"], ["signup", "Sign up"]];
+const MODES = [["login", "Log in"], ["signup", "Sign up"]];
 const HERO = {
-  guest: ["Chat with our team", "No sign-up needed. Add a name if you like."],
   login: ["Welcome back", "Log in to pick up where you left off."],
   signup: ["Create your account", "Keep your chat history every time you visit."],
 };
@@ -385,7 +384,7 @@ function PasswordField({ label, value, onChange, onBlur, show, onToggle, autoCom
 }
 
 function AuthScreen({ upgrade, busy, setBusy, onDone, onBack }) {
-  const [mode, setMode] = useState(upgrade ? "signup" : "guest");
+  const [mode, setMode] = useState(upgrade ? "signup" : "login");
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");

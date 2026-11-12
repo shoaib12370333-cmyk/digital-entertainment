@@ -49,7 +49,7 @@ function Hero({ gamesCount, paymentOptions, showPayments, cashoutOpen }) {
   return (
     <section className="hero" ref={ref} onPointerMove={onMove}>
       <div className="hero-art" aria-hidden="true">
-        <img src="/hero-digital.svg" alt="" fetchpriority="high" />
+        <img src="/hero-bg.webp" alt="" fetchpriority="high" />
       </div>
       <Embers />
       <div className="hero-copy">

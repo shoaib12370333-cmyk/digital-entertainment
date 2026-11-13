@@ -29,6 +29,71 @@ function Embers() {
   );
 }
 
+/* A looping scene for the hero: reels spin and land on 777, the JACKPOT sign flashes and dollars and coins pour down.
+   It is only decoration: it shows no winner, name or amount. */
+const REEL_SYMBOLS = ["7", "BAR", "$", "\u2666", "\u2605", "BAR", "$", "\u2660"];
+const RAIN = Array.from({ length: 44 }, (_, i) => {
+  const r = (n) => {
+    const x = Math.sin(i * 91.7 + n * 17.3) * 43758.5453;
+    return x - Math.floor(x);
+  };
+  return { coin: i % 3 !== 0, x: `${(r(1) * 100).toFixed(1)}%`, d: `${(-r(2) * 6).toFixed(2)}s`, t: `${(2.6 + r(3) * 2.4).toFixed(2)}s`, s: `${Math.round(16 + r(4) * 16)}px`, rot: `${Math.round((r(5) - 0.5) * 720)}deg` };
+});
+// Milliseconds from the start of a round: the three reels stop one after another, then the jackpot shows, then a new round begins.
+const STOPS = [2000, 2700, 3400];
+const JACKPOT_MS = 3400;
+const ROUND_MS = 8200;
+
+function JackpotScene() {
+  const [stopped, setStopped] = useState([false, false, false]);
+  const [jackpot, setJackpot] = useState(false);
+
+  useEffect(() => {
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setStopped([true, true, true]);
+      setJackpot(true);
+      return undefined;
+    }
+    let timers = [];
+    const round = () => {
+      setStopped([false, false, false]);
+      setJackpot(false);
+      STOPS.forEach((ms, i) => timers.push(setTimeout(() => setStopped((s) => s.map((v, k) => (k === i ? true : v))), ms)));
+      timers.push(setTimeout(() => setJackpot(true), JACKPOT_MS));
+      timers.push(setTimeout(round, ROUND_MS));
+    };
+    round();
+    return () => timers.forEach(clearTimeout);
+  }, []);
+
+  return (
+    <div className={`hero-jackpot ${jackpot ? "is-jackpot" : ""}`} aria-hidden="true">
+      <div className="rain">
+        {RAIN.map((p, i) => (
+          <i key={i} className={p.coin ? "coin" : "bill"} style={{ "--x": p.x, "--d": p.d, "--t": p.t, "--s": p.s, "--rot": p.rot }}>$</i>
+        ))}
+      </div>
+      <div className="cabinet">
+        <div className="cab-sign"><span>JACKPOT</span></div>
+        <div className="cab-lights"><i /><i /><i /><i /><i /><i /><i /></div>
+        <div className="reels">
+          {stopped.map((done, k) => (
+            <div key={k} className={`reel ${done ? "landed" : "spinning"}`}>
+              <div className="strip">
+                {REEL_SYMBOLS.concat(REEL_SYMBOLS).map((s, i) => (
+                  <b key={i} className={s === "7" ? "seven" : s === "BAR" ? "bar" : "sym"}>{s}</b>
+                ))}
+              </div>
+            </div>
+          ))}
+          <span className="payline" />
+        </div>
+        <div className="cab-foot"><span>777</span></div>
+      </div>
+    </div>
+  );
+}
+
 function Hero({ gamesCount, paymentOptions, showPayments, cashoutOpen }) {
   const t = useText();
   const ref = useRef(null);
@@ -48,7 +113,7 @@ function Hero({ gamesCount, paymentOptions, showPayments, cashoutOpen }) {
 
   return (
     <section className="hero" ref={ref} onPointerMove={onMove}>
-      <img className="hero-slot" src="/slot-bg.png" alt="" aria-hidden="true" draggable={false} />
+      <JackpotScene />
       <Embers />
       <div className="hero-copy">
         <div className="hero-badge"><span className="dot live" /> {t.heroBadge}</div>

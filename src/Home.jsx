@@ -39,12 +39,28 @@ const RAIN = Array.from({ length: 44 }, (_, i) => {
   };
   return { coin: i % 3 !== 0, x: `${(r(1) * 100).toFixed(1)}%`, d: `${(-r(2) * 6).toFixed(2)}s`, t: `${(2.6 + r(3) * 2.4).toFixed(2)}s`, s: `${Math.round(16 + r(4) * 16)}px`, rot: `${Math.round((r(5) - 0.5) * 720)}deg` };
 });
-// Milliseconds from the start of a round: the three reels stop one after another, then the jackpot shows, then a new round begins.
+// Milliseconds from the start of a spin: the three reels stop one after another. Every third spin lands on 777 and shows the jackpot.
 const STOPS = [2000, 2700, 3400];
-const JACKPOT_MS = 3400;
-const ROUND_MS = 8200;
+const JACKPOT_EVERY = 3;
+const PAUSE_MS = { win: 4800, lose: 1300 }; // how long the result stays before the next spin
+
+const pick = () => REEL_SYMBOLS[Math.floor(Math.random() * REEL_SYMBOLS.length)];
+/** Three symbols for one spin. A losing spin is random but never three of a kind. */
+function spinResult(win) {
+  if (win) return ["7", "7", "7"];
+  let r;
+  do r = [pick(), pick(), pick()]; while (r[0] === r[1] && r[1] === r[2]);
+  return r;
+}
+/** The reel strip with the wanted symbol first (that is the one showing in the window when the reel stops). */
+function stripFor(symbol) {
+  const at = Math.max(0, REEL_SYMBOLS.indexOf(symbol));
+  const base = REEL_SYMBOLS.slice(at).concat(REEL_SYMBOLS.slice(0, at));
+  return base.concat(base);
+}
 
 function JackpotScene() {
+  const [result, setResult] = useState(["7", "7", "7"]);
   const [stopped, setStopped] = useState([false, false, false]);
   const [jackpot, setJackpot] = useState(false);
 
@@ -54,15 +70,19 @@ function JackpotScene() {
       setJackpot(true);
       return undefined;
     }
-    let timers = [];
-    const round = () => {
+    const timers = [];
+    let spins = 0;
+    const spin = () => {
+      spins += 1;
+      const win = spins % JACKPOT_EVERY === 0;
+      setResult(spinResult(win));
       setStopped([false, false, false]);
       setJackpot(false);
-      STOPS.forEach((ms, i) => timers.push(setTimeout(() => setStopped((s) => s.map((v, k) => (k === i ? true : v))), ms)));
-      timers.push(setTimeout(() => setJackpot(true), JACKPOT_MS));
-      timers.push(setTimeout(round, ROUND_MS));
+      STOPS.forEach((ms, k) => timers.push(setTimeout(() => setStopped((s) => s.map((v, n) => (n === k ? true : v))), ms)));
+      if (win) timers.push(setTimeout(() => setJackpot(true), STOPS[2]));
+      timers.push(setTimeout(spin, STOPS[2] + (win ? PAUSE_MS.win : PAUSE_MS.lose)));
     };
-    round();
+    spin();
     return () => timers.forEach(clearTimeout);
   }, []);
 
@@ -80,8 +100,8 @@ function JackpotScene() {
           {stopped.map((done, k) => (
             <div key={k} className={`reel ${done ? "landed" : "spinning"}`}>
               <div className="strip">
-                {REEL_SYMBOLS.concat(REEL_SYMBOLS).map((s, i) => (
-                  <b key={i} className={s === "7" ? "seven" : s === "BAR" ? "bar" : "sym"}>{s}</b>
+                {stripFor(result[k]).map((s, n) => (
+                  <b key={n} className={s === "7" ? "seven" : s === "BAR" ? "bar" : "sym"}>{s}</b>
                 ))}
               </div>
             </div>
